@@ -81,14 +81,19 @@ def build_executable():
     """Build the standalone executable using PyInstaller"""
     print("🔨 Building executable...")
     
-    # PyInstaller command
+    # PyInstaller command with proper Tkinter bundling
     cmd = [
         sys.executable, "-m", "PyInstaller",
         "--onefile",
         "--windowed",
         "--name=ExilesInstaller",
         "--add-data=src/apps.json:.",
+        "--collect-data=tcl",
+        "--collect-data=tk", 
+        "--hidden-import=tkinter",
         "--hidden-import=tkinter.ttk",
+        "--hidden-import=tkinter.messagebox",
+        "--hidden-import=tkinter.filedialog",
         "--hidden-import=requests",
         "--hidden-import=webbrowser",
         "--clean",
