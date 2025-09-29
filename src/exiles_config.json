@@ -1,0 +1,14 @@
+{
+  "download_directory": "/home/runner/Downloads/ExilesHUD",
+  "run_installers": true,
+  "cleanup_downloads": false,
+  "max_concurrent_downloads": 3,
+  "download_timeout": 300,
+  "verify_checksums": true,
+  "auto_check_updates": true,
+  "notify_updates": true,
+  "update_server": "https://downloads.exiles.one",
+  "log_level": "INFO",
+  "debug_mode": false,
+  "dry_run": false
+}

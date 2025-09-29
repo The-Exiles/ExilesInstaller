@@ -1722,6 +1722,9 @@ class ExilesInstaller:
             return False
             
         app_name = app.get('name', 'Unknown')
+        description = app.get('description', '')
+        
+        # Enhanced logging with bookmark reminder
         self.log_message(f"Opening web tool: {app_name}", "info")
         self.log_message(f"URL: {url}", "info")
         
@@ -1730,7 +1733,15 @@ class ExilesInstaller:
             webbrowser.open(url)
             self.log_message(f"✓ {app_name} opened in browser", "success")
             
-            # Web tools don't have post-installation steps typically
+            # Add prominent bookmark reminder
+            self.log_message("━" * 60, "info")
+            self.log_message("⭐ IMPORTANT: BOOKMARK THIS WEBSITE! ⭐", "info")
+            self.log_message(f"You'll need {app_name} for future use.", "info")
+            if description:
+                self.log_message(f"Purpose: {description}", "info")
+            self.log_message("Add it to your bookmarks toolbar for quick access.", "info")
+            self.log_message("━" * 60, "info")
+            
             return True
             
         except Exception as e:
@@ -2114,18 +2125,62 @@ class ExilesInstaller:
         self.root.after(0, lambda: self.status_label.configure(text=status))
         
     def installation_complete(self, completed, total):
-        """Handle installation completion"""
+        """Handle installation completion with enhanced summary"""
         self.install_button.configure(state='normal', text="► INSTALL SELECTED")
         self.update_progress(100)
         
+        # Get current game info for context
+        games = self.apps_config.get("games", {})
+        current_game_data = games.get(self.current_game, {})
+        game_name = current_game_data.get("name", self.current_game)
+        
+        # Enhanced completion logging
+        self.log_message("\n" + "═" * 70, "info")
+        self.log_message("🎯 INSTALLATION SUMMARY", "info")
+        self.log_message("═" * 70, "info")
+        
         if completed == total:
+            # Full success
             self.update_status(f"Installation completed! {completed}/{total} applications installed successfully.")
-            self.log_message(f"\n🎉 Installation completed! {completed}/{total} applications installed successfully.", "success")
-            messagebox.showinfo("Installation Complete", f"Successfully installed {completed} out of {total} applications!")
+            self.log_message(f"✅ SUCCESS: All {completed} {game_name} tools installed!", "success")
+            self.log_message("\n🚀 NEXT STEPS:", "info")
+            self.log_message("• Launch your installed applications from Start Menu or Desktop", "info")
+            self.log_message("• Web tools opened in browser - remember to bookmark them!", "info")
+            self.log_message("• Check application folders for configuration guides", "info")
+            self.log_message(f"• Start playing {game_name} with your enhanced toolset!", "info")
+            
+            # Enhanced success dialog
+            success_msg = (f"🎉 {game_name} Setup Complete!\n\n"
+                          f"Successfully installed all {completed} tools.\n\n"
+                          f"Next Steps:\n"
+                          f"• Find your new tools in the Start Menu\n"
+                          f"• Bookmark any web tools that opened\n"
+                          f"• Start exploring {game_name}!")
+            messagebox.showinfo("Installation Complete", success_msg)
+            
         else:
+            # Partial success
+            failed = total - completed
             self.update_status(f"Installation completed with errors. {completed}/{total} applications installed.")
-            self.log_message(f"\n⚠️ Installation completed with errors. {completed}/{total} applications installed.", "warning")
-            messagebox.showwarning("Installation Complete", f"Installed {completed} out of {total} applications. Check the log for details.")
+            self.log_message(f"⚠️ PARTIAL SUCCESS: {completed} installed, {failed} failed", "warning")
+            self.log_message("\n📋 WHAT HAPPENED:", "info")
+            self.log_message(f"• {completed} tools installed successfully", "info")
+            self.log_message(f"• {failed} tools had installation issues", "info")
+            self.log_message("• Check the log above for specific error details", "info")
+            self.log_message("\n💡 RECOMMENDATIONS:", "info")
+            self.log_message("• Try running the installer as Administrator", "info")
+            self.log_message("• Check your internet connection", "info")
+            self.log_message("• Temporarily disable antivirus during installation", "info")
+            
+            # Enhanced warning dialog
+            warning_msg = (f"⚠️ {game_name} Setup Partially Complete\n\n"
+                          f"Installed: {completed} out of {total} tools\n"
+                          f"Failed: {failed} tools\n\n"
+                          f"Check the installation log for details.\n"
+                          f"You can try re-running the failed installations.")
+            messagebox.showwarning("Installation Complete", warning_msg)
+            
+        self.log_message("═" * 70, "info")
             
     def show_settings(self):
         """Show settings dialog"""
