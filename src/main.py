@@ -80,6 +80,10 @@ class ExilesInstaller:
         # Load apps configuration
         self.apps_config = self.load_apps_config()
         self.selected_apps = set()
+        
+        # Multi-game support
+        self.current_game = "elite_dangerous"  # Default game
+        self.supported_games = self.get_supported_games()
         self.installation_progress = {}
         
         # Load settings from config file
@@ -101,18 +105,55 @@ class ExilesInstaller:
             self.check_for_updates_async()
         
     def load_apps_config(self):
-        """Load applications configuration from apps.json"""
+        """Load applications configuration from apps.json with multi-game support"""
         try:
             with open('apps.json', 'r') as f:
-                return json.load(f)
+                config = json.load(f)
+                
+            # Check if this is the new multi-game format
+            if "games" in config:
+                return config
+            
+            # Convert old format to new format for backward compatibility
+            logger.info("Converting legacy apps.json format to multi-game format")
+            new_config = {
+                "metadata": config.get("metadata", {}),
+                "games": {
+                    "elite_dangerous": {
+                        "name": "Elite Dangerous",
+                        "description": "Essential tools for Elite Dangerous commanders",
+                        "color_theme": {
+                            "primary": "#ff8533",
+                            "secondary": "#3182ce"
+                        },
+                        "apps": config.get("apps", [])
+                    }
+                }
+            }
+            return new_config
+            
         except FileNotFoundError:
             logger.error("apps.json not found")
             messagebox.showerror("Error", "apps.json configuration file not found")
-            return {"metadata": {}, "apps": []}
+            return {"metadata": {}, "games": {"elite_dangerous": {"apps": []}}}
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON in apps.json: {e}")
             messagebox.showerror("Error", f"Invalid JSON in apps.json: {e}")
-            return {"metadata": {}, "apps": []}
+            return {"metadata": {}, "games": {"elite_dangerous": {"apps": []}}}
+    
+    def get_supported_games(self):
+        """Get list of supported games from configuration"""
+        games = self.apps_config.get("games", {})
+        return [(game_id, game_data.get("name", game_id.title())) 
+                for game_id, game_data in games.items()]
+    
+    def get_current_game_apps(self):
+        """Get apps for the currently selected game"""
+        return self.apps_config.get("games", {}).get(self.current_game, {}).get("apps", [])
+    
+    def get_current_game_info(self):
+        """Get information about the currently selected game"""
+        return self.apps_config.get("games", {}).get(self.current_game, {})
             
     def setup_ui(self):
         """Setup a visually rich, modern interface"""
@@ -477,6 +518,41 @@ class ExilesInstaller:
         search_entry.bind('<KeyRelease>', self.filter_apps)
         
         # Filter dropdown for installation types
+        # Game selection dropdown
+        game_frame = tk.Frame(filter_content, bg=self.colors['bg_panel'])
+        game_frame.pack(fill='x', pady=(10, 0))
+        
+        game_label = tk.Label(
+            game_frame,
+            text="Game:",
+            font=('Segoe UI', 10),
+            fg=self.colors['text_muted'],
+            bg=self.colors['bg_panel']
+        )
+        game_label.pack(side='left', padx=(0, 10))
+        
+        # Get current game name for display
+        current_game_name = self.apps_config.get("games", {}).get(self.current_game, {}).get("name", self.current_game)
+        self.game_var = tk.StringVar(value=current_game_name)
+        game_options = [game_data.get("name", game_id) for game_id, game_data in self.apps_config.get("games", {}).items()]
+        
+        if game_options:  # Only create dropdown if games are available
+            game_dropdown = tk.OptionMenu(
+                game_frame,
+                self.game_var,
+                *game_options,
+                command=self.on_game_change
+            )
+            game_dropdown.configure(
+                bg=self.colors['bg_primary'],
+                fg=self.colors['text_primary'],
+                activebackground=self.colors['bg_hover'],
+                activeforeground=self.colors['text_primary'],
+                bd=0,
+                relief='flat'
+            )
+            game_dropdown.pack(side='left')
+        
         filter_type_frame = tk.Frame(filter_content, bg=self.colors['bg_panel'])
         filter_type_frame.pack(fill='x', pady=(10, 0))
         
@@ -490,7 +566,7 @@ class ExilesInstaller:
         type_label.pack(side='left', padx=(0, 10))
         
         self.filter_type_var = tk.StringVar(value="All")
-        type_options = ["All", "Essential", "Optional", "GitHub", "Direct Download", "Windows Package"]
+        type_options = ["All", "Essential", "Optional", "GitHub", "Direct Download", "Windows Package", "Web Tools"]
         
         type_dropdown = tk.OptionMenu(
             filter_type_frame,
@@ -567,7 +643,7 @@ class ExilesInstaller:
             self.app_cards.clear()
             self.app_vars.clear()
             
-            apps = self.apps_config.get('apps', [])
+            apps = self.get_current_game_apps()
             
             # App icons mapping with professional symbols
             app_icons = {
@@ -619,6 +695,8 @@ class ExilesInstaller:
                     elif filter_type == "Direct Download" and install_type not in ["exe", "zip"]:
                         continue
                     elif filter_type == "Windows Package" and install_type != "winget":
+                        continue
+                    elif filter_type == "Web Tools" and install_type != "web":
                         continue
                 
                 self.create_app_card(app, app_icons)
@@ -1135,6 +1213,29 @@ class ExilesInstaller:
         except Exception as e:
             logger.error(f"Error changing filter: {e}")
     
+    def on_game_change(self, selected_game_name):
+        """Handle game selection changes"""
+        try:
+            # Find the game ID based on selected name
+            games = self.apps_config.get("games", {})
+            for game_id, game_data in games.items():
+                if game_data.get("name", game_id) == selected_game_name:
+                    self.current_game = game_id
+                    break
+            
+            # Clear current selections since we're switching games
+            self.selected_apps.clear()
+            
+            # Log the game change
+            self.log_message(f"◆ Switched to {selected_game_name}", "info")
+            
+            # Refresh the interface
+            self.populate_app_cards()
+            
+        except Exception as e:
+            logger.error(f"Error changing game: {e}")
+            self.log_message(f"◆ Error switching games: {str(e)}", "error")
+    
     def apply_preset(self, app_ids):
         """Apply a preset selection with card interface"""
         try:
@@ -1451,6 +1552,8 @@ class ExilesInstaller:
                 return self.install_via_direct_download(app)
             elif install_type == 'zip':
                 return self.install_via_zip(app)
+            elif install_type == 'web':
+                return self.install_via_web(app)
             else:
                 self.log_message(f"Unknown install type: {install_type}", "error")
                 return False
@@ -1607,6 +1710,31 @@ class ExilesInstaller:
             return False
         except Exception as e:
             self.log_message(f"Zip installation error: {str(e)}", "error")
+            return False
+    
+    def install_via_web(self, app):
+        """Handle web-based tools by opening URL in browser"""
+        import webbrowser
+        
+        url = app.get('url')
+        if not url:
+            self.log_message("No URL specified for web tool", "error")
+            return False
+            
+        app_name = app.get('name', 'Unknown')
+        self.log_message(f"Opening web tool: {app_name}", "info")
+        self.log_message(f"URL: {url}", "info")
+        
+        try:
+            # Open URL in default browser
+            webbrowser.open(url)
+            self.log_message(f"✓ {app_name} opened in browser", "success")
+            
+            # Web tools don't have post-installation steps typically
+            return True
+            
+        except Exception as e:
+            self.log_message(f"Failed to open web tool: {str(e)}", "error")
             return False
             
     def download_and_install(self, url, filename, app):
@@ -1886,7 +2014,7 @@ class ExilesInstaller:
                 self.apps_listbox.delete(0, tk.END)
                 
                 # Repopulate with updated apps
-                apps = self.apps_config.get('apps', [])
+                apps = self.get_current_game_apps()
                 for app in apps:
                     name = app.get('name', 'Unknown')
                     optional = app.get('optional', True)

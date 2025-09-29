@@ -1,12 +1,21 @@
 {
   "metadata": { 
-    "version": "1.0.0", 
-    "description": "Exiles HUD - Elite Dangerous Applications Installer", 
+    "version": "2.0.0", 
+    "description": "Exiles HUD - Multi-Game Space Simulator Tools Installer", 
     "author": "CMDR Exiles", 
     "maintainer": "CMDR Watty", 
-    "updated": "2025-09-29" 
+    "updated": "2025-09-29",
+    "supported_games": ["elite_dangerous", "star_citizen", "eve_online"]
   },
-  "apps": [
+  "games": {
+    "elite_dangerous": {
+      "name": "Elite Dangerous",
+      "description": "Essential tools for Elite Dangerous commanders",
+      "color_theme": {
+        "primary": "#ff8533",
+        "secondary": "#3182ce"
+      },
+      "apps": [
     { 
       "id": "EDMC", 
       "name": "ED Market Connector", 
@@ -194,5 +203,118 @@
       "description": "File archiver with high compression ratio",
       "checksum": ""
     }
-  ]
+      ]
+    },
+    "star_citizen": {
+      "name": "Star Citizen",
+      "description": "Essential tools for Star Citizen pilots",
+      "color_theme": {
+        "primary": "#1e90ff",
+        "secondary": "#ff6b35"
+      },
+      "apps": [
+        {
+          "id": "SC-Trade-Tools",
+          "name": "SC Trade Tools",
+          "install_type": "web",
+          "url": "https://sc-trade.tools/",
+          "optional": false,
+          "description": "Primary trade route optimization platform",
+          "category": "Trading"
+        },
+        {
+          "id": "Erkul-Games",
+          "name": "Erkul DPS Calculator",
+          "install_type": "web",
+          "url": "https://erkul.games/",
+          "optional": false,
+          "description": "Ship loadout builder and DPS calculator",
+          "category": "Ship Building"
+        },
+        {
+          "id": "UEX-Corp",
+          "name": "UEX Corporation",
+          "install_type": "web",
+          "url": "https://uexcorp.space/",
+          "optional": true,
+          "description": "Comprehensive trading, mining, and marketplace data",
+          "category": "Trading"
+        },
+        {
+          "id": "CCU-Game",
+          "name": "CCU Game",
+          "install_type": "web",
+          "url": "https://ccugame.app/",
+          "optional": true,
+          "description": "Ship upgrade chain optimization and fleet planning",
+          "category": "Fleet Management"
+        },
+        {
+          "id": "GameGlass",
+          "name": "GameGlass",
+          "install_type": "web",
+          "url": "https://gameglass.gg/",
+          "optional": true,
+          "description": "Touchscreen controls for Star Citizen",
+          "category": "Control Systems"
+        }
+      ]
+    },
+    "eve_online": {
+      "name": "EVE Online",
+      "description": "Essential tools for EVE Online capsuleers",
+      "color_theme": {
+        "primary": "#ffd700",
+        "secondary": "#8b0000"
+      },
+      "apps": [
+        {
+          "id": "PYFA",
+          "name": "PYFA (Python Fitting Assistant)",
+          "install_type": "github",
+          "github_repo": "pyfa-org/Pyfa",
+          "github_asset": "pyfa-v2.61.0-win.exe",
+          "optional": false,
+          "description": "Cross-platform ship fitting tool",
+          "category": "Ship Fitting"
+        },
+        {
+          "id": "EVE-Guru",
+          "name": "EVE Guru",
+          "install_type": "web",
+          "url": "https://eveguru.online/",
+          "optional": true,
+          "description": "Manufacturing planner with profitability optimization",
+          "category": "Industry"
+        },
+        {
+          "id": "Ravworks",
+          "name": "Ravworks",
+          "install_type": "web",
+          "url": "https://ravworks.com/",
+          "optional": true,
+          "description": "Free market and industry tool",
+          "category": "Industry"
+        },
+        {
+          "id": "Pathfinder",
+          "name": "Pathfinder Mapping Tool",
+          "install_type": "web",
+          "url": "https://pathfinder.ashharrison.co.uk/",
+          "optional": true,
+          "description": "Wormhole mapping and fleet management",
+          "category": "Fleet Management"
+        },
+        {
+          "id": "EVE-Workbench",
+          "name": "EVE Workbench",
+          "install_type": "web",
+          "url": "https://eve-workbench.github.io/",
+          "optional": true,
+          "description": "Web-based fitting and market tools",
+          "category": "Ship Fitting"
+        }
+      ]
+    }
+  }
 }
