@@ -104,6 +104,10 @@ class ExilesInstaller:
         self.apps_config = self.load_apps_config()
         self.selected_apps = set()
         
+        # Installation state tracking
+        self.installation_state_file = os.path.join(os.path.expanduser('~'), '.exiles_installer_state.json')
+        self.installation_states = self.load_installation_states()
+        
         # Multi-game support
         self.current_game = "elite_dangerous"  # Default game
         self.supported_games = self.get_supported_games()
@@ -126,9 +130,15 @@ class ExilesInstaller:
         # Initialize privilege handling
         self.is_admin = self.check_admin_privileges()
         
+        # Initialize status tracking
+        self.app_statuses = {}
+        
         # Defer update checking until after UI is shown to improve startup speed
         if self.settings.get('auto_check_updates', True):
             self.root.after(2000, self.check_for_updates_async)  # Check after 2 seconds
+            
+        # Start app status detection after UI loads
+        self.root.after(3000, self.update_app_statuses_async)  # Check app statuses after 3 seconds
     
     def check_admin_privileges(self):
         """Check if the current process is running with administrator privileges"""
@@ -374,6 +384,25 @@ class ExilesInstaller:
         try:
             # Check if this is the new multi-game format
             if "games" in config:
+                # If we have a flat apps array, organize apps under games
+                if "apps" in config and config["apps"]:
+                    flat_apps = config["apps"]
+                    games_config = config.get("games", {})
+                    
+                    # Organize apps by game
+                    for game_id in games_config.keys():
+                        games_config[game_id]["apps"] = []
+                    
+                    # Distribute apps to their respective games
+                    for app in flat_apps:
+                        app_games = app.get("games", [])
+                        for game_id in app_games:
+                            if game_id in games_config:
+                                games_config[game_id]["apps"].append(app)
+                    
+                    # Update config with organized structure
+                    config["games"] = games_config
+                
                 return config
             
             # Convert old format to new format for backward compatibility
@@ -3178,6 +3207,383 @@ class ExilesInstaller:
             logger.warning(f"Failed to load settings: {e}, using defaults")
         
         return default_settings
+    
+    def load_installation_states(self):
+        """Load installation state tracking from JSON file"""
+        try:
+            if os.path.exists(self.installation_state_file):
+                with open(self.installation_state_file, 'r', encoding='utf-8') as f:
+                    states = json.load(f)
+                    logger.info(f"Loaded installation states from: {self.installation_state_file}")
+                    return states
+            else:
+                logger.info("No installation state file found, starting fresh")
+                return {"installed_apps": {}, "last_updated": None}
+        except Exception as e:
+            logger.warning(f"Failed to load installation states: {e}")
+            return {"installed_apps": {}, "last_updated": None}
+    
+    def save_installation_states(self):
+        """Save current installation states to JSON file"""
+        try:
+            self.installation_states["last_updated"] = datetime.now().isoformat()
+            with open(self.installation_state_file, 'w', encoding='utf-8') as f:
+                json.dump(self.installation_states, f, indent=2)
+            logger.debug("Installation states saved")
+        except Exception as e:
+            logger.error(f"Failed to save installation states: {e}")
+    
+    def detect_app_installation(self, app):
+        """Detect if an app is installed on the system"""
+        app_id = app.get('id', '')
+        app_name = app.get('name', '')
+        
+        try:
+            # Windows-specific detection logic
+            if platform.system() == "Windows":
+                return self._detect_windows_app(app)
+            else:
+                # Linux/Mac detection (simplified)
+                return self._detect_unix_app(app)
+                
+        except Exception as e:
+            logger.debug(f"Error detecting {app_name}: {e}")
+            return False, None, None
+    
+    def _detect_windows_app(self, app):
+        """Windows-specific app detection using registry and file paths"""
+        app_id = app.get('id', '')
+        app_name = app.get('name', '')
+        
+        # Common installation paths to check
+        common_paths = [
+            f"C:\\Program Files\\{app_name}",
+            f"C:\\Program Files (x86)\\{app_name}",
+            f"C:\\Users\\{os.environ.get('USERNAME', 'User')}\\AppData\\Local\\{app_name}",
+            f"C:\\Users\\{os.environ.get('USERNAME', 'User')}\\AppData\\Roaming\\{app_name}"
+        ]
+        
+        # App-specific detection logic
+        detection_rules = {
+            'AutoHotkey': {
+                'paths': ['C:\\Program Files\\AutoHotkey', 'C:\\Program Files (x86)\\AutoHotkey'],
+                'executables': ['AutoHotkey.exe', 'AutoHotkeyU64.exe']
+            },
+            'vJoy': {
+                'paths': ['C:\\Program Files\\vJoy', 'C:\\Program Files (x86)\\vJoy'],
+                'executables': ['vJoyConf.exe']
+            },
+            'HidHide': {
+                'paths': ['C:\\Program Files\\Nefarius Software Solutions\\HidHide'],
+                'executables': ['HidHideClient.exe']
+            },
+            'EDMarketConnector': {
+                'paths': ['C:\\Program Files (x86)\\EDMarketConnector', 'C:\\Users\\%USERNAME%\\AppData\\Local\\EDMarketConnector'],
+                'executables': ['EDMarketConnector.exe']
+            },
+            'EDDiscovery': {
+                'paths': ['C:\\Program Files (x86)\\EDDiscovery', 'C:\\Users\\%USERNAME%\\AppData\\Local\\EDDiscovery'],
+                'executables': ['EDDiscovery.exe']
+            },
+            'VoiceAttack': {
+                'paths': ['C:\\Program Files (x86)\\VoiceAttack', 'C:\\Program Files\\VoiceAttack'],
+                'executables': ['VoiceAttack.exe']
+            },
+            'JoystickGremlin': {
+                'paths': ['C:\\Program Files (x86)\\WhiteMagic\\Joystick Gremlin'],
+                'executables': ['joystick_gremlin.exe']
+            },
+            'opentrack': {
+                'paths': ['C:\\Program Files\\opentrack', 'C:\\Program Files (x86)\\opentrack'],
+                'executables': ['opentrack.exe']
+            },
+            'TrackIR': {
+                'paths': ['C:\\Program Files (x86)\\NaturalPoint\\TrackIR5'],
+                'executables': ['TrackIR5.exe']
+            },
+            'TobiiGameHub': {
+                'paths': ['C:\\Program Files\\Tobii\\Tobii Game Hub'],
+                'executables': ['TobiiGameHub.exe']
+            },
+            'LogitechGHUB': {
+                'paths': ['C:\\Program Files\\LGHUB'],
+                'executables': ['lghub.exe']
+            },
+            'VIRPIL-VPC': {
+                'paths': ['C:\\Program Files (x86)\\VIRPIL Controls'],
+                'executables': ['VPC_Panel.exe']
+            },
+            'VKBDevCfg': {
+                'paths': ['C:\\Program Files (x86)\\VKB-Sim\\VKBDevCfg'],
+                'executables': ['VKBDevCfg.exe']
+            },
+            'TARGET': {
+                'paths': ['C:\\Program Files (x86)\\Thrustmaster\\TARGET'],
+                'executables': ['TARGET.exe']
+            },
+            '7zip': {
+                'paths': ['C:\\Program Files\\7-Zip', 'C:\\Program Files (x86)\\7-Zip'],
+                'executables': ['7z.exe', '7zG.exe']
+            },
+            'PYFA': {
+                'paths': ['C:\\Program Files (x86)\\pyfa', 'C:\\Program Files\\pyfa'],
+                'executables': ['pyfa.exe']
+            }
+        }
+        
+        rules = detection_rules.get(app_id, {})
+        paths_to_check = rules.get('paths', common_paths)
+        executables = rules.get('executables', [f"{app_name}.exe"])
+        
+        # Expand environment variables in paths
+        expanded_paths = []
+        for path in paths_to_check:
+            expanded_path = os.path.expandvars(path)
+            expanded_paths.append(expanded_path)
+        
+        # Check for installation
+        for path in expanded_paths:
+            if os.path.exists(path):
+                # Check for specific executables
+                for exe in executables:
+                    exe_path = os.path.join(path, exe)
+                    if os.path.exists(exe_path):
+                        # Try to get version info
+                        version = self._get_file_version(exe_path)
+                        return True, version, exe_path
+                
+                # If directory exists but no specific exe found, still consider installed
+                return True, "Unknown", path
+        
+        return False, None, None
+    
+    def _detect_unix_app(self, app):
+        """Unix-like systems app detection (simplified)"""
+        app_id = app.get('id', '')
+        
+        # Check common Unix locations
+        common_commands = {
+            'AutoHotkey': 'autohotkey',
+            '7zip': '7z',
+            'PYFA': 'pyfa'
+        }
+        
+        command = common_commands.get(app_id, app_id.lower())
+        
+        try:
+            # Check if command exists in PATH
+            result = subprocess.run(['which', command], capture_output=True, text=True)
+            if result.returncode == 0:
+                # Try to get version
+                version_result = subprocess.run([command, '--version'], capture_output=True, text=True)
+                version = version_result.stdout.strip() if version_result.returncode == 0 else "Unknown"
+                return True, version, result.stdout.strip()
+        except:
+            pass
+        
+        return False, None, None
+    
+    def _get_file_version(self, file_path):
+        """Extract version info from Windows executable"""
+        try:
+            if platform.system() == "Windows" and ctypes is not None:
+                # Use Windows API to get file version
+                size = ctypes.windll.version.GetFileVersionInfoSizeW(file_path, None)
+                if size:
+                    res = ctypes.create_string_buffer(size)
+                    ctypes.windll.version.GetFileVersionInfoW(file_path, None, size, res)
+                    
+                    # Extract version numbers
+                    r = ctypes.c_uint()
+                    l = ctypes.c_uint()
+                    ctypes.windll.version.VerQueryValueW(res, '\\', ctypes.byref(r), ctypes.byref(l))
+                    
+                    if r:
+                        version_struct = ctypes.cast(r, ctypes.POINTER(ctypes.c_uint * 4)).contents
+                        version = f"{version_struct[1] >> 16}.{version_struct[1] & 0xFFFF}.{version_struct[0] >> 16}.{version_struct[0] & 0xFFFF}"
+                        return version
+        except:
+            pass
+        
+        # Fallback: get file modification date as version indicator
+        try:
+            mtime = os.path.getmtime(file_path)
+            return datetime.fromtimestamp(mtime).strftime("%Y-%m-%d")
+        except:
+            return "Unknown"
+    
+    def check_remote_version(self, app):
+        """Check latest version available from remote sources"""
+        try:
+            install_methods = app.get('install_methods', [])
+            
+            for method in install_methods:
+                method_type = method.get('type', '')
+                
+                if method_type == 'github':
+                    return self._check_github_version(method)
+                elif method_type == 'winget':
+                    return self._check_winget_version(method)
+                elif method_type == 'url':
+                    return self._check_url_version(method, app)
+            
+            # No supported version checking method
+            return None
+            
+        except Exception as e:
+            logger.debug(f"Error checking remote version for {app.get('name', 'unknown')}: {e}")
+            return None
+    
+    def _check_github_version(self, method):
+        """Check latest version from GitHub releases"""
+        try:
+            repo = method.get('github_repo', '')
+            if not repo:
+                return None
+            
+            url = f"https://api.github.com/repos/{repo}/releases/latest"
+            headers = {'Accept': 'application/vnd.github.v3+json'}
+            
+            response = requests.get(url, headers=headers, timeout=10)
+            if response.status_code == 200:
+                data = response.json()
+                tag_name = data.get('tag_name', '')
+                # Clean version string (remove 'v' prefix if present)
+                version = tag_name.lstrip('v')
+                return version
+            
+        except Exception as e:
+            logger.debug(f"Error checking GitHub version: {e}")
+        
+        return None
+    
+    def _check_winget_version(self, method):
+        """Check latest version from winget"""
+        try:
+            winget_id = method.get('winget_id', '')
+            if not winget_id:
+                return None
+            
+            # Run winget show command to get version info
+            result = subprocess.run(
+                ['winget', 'show', winget_id, '--exact'],
+                capture_output=True,
+                text=True,
+                timeout=30
+            )
+            
+            if result.returncode == 0:
+                # Parse winget output for version
+                lines = result.stdout.split('\n')
+                for line in lines:
+                    if 'Version:' in line:
+                        version = line.split('Version:')[1].strip()
+                        return version
+            
+        except Exception as e:
+            logger.debug(f"Error checking winget version: {e}")
+        
+        return None
+    
+    def _check_url_version(self, method, app):
+        """Check version from direct URL (limited support)"""
+        # This is challenging without specific version endpoints
+        # For now, return None - could be enhanced with web scraping
+        return None
+    
+    def update_app_statuses_async(self):
+        """Update app installation statuses asynchronously"""
+        def update_statuses():
+            try:
+                self.log_message("🔍 Checking installation statuses...", "info")
+                
+                # Handle both old and new app configuration formats
+                apps_to_check = []
+                
+                # Check if apps are nested under games (new format)
+                games_config = self.apps_config.get('games', {})
+                for game_id, game_data in games_config.items():
+                    game_apps = game_data.get('apps', [])
+                    apps_to_check.extend(game_apps)
+                
+                # Fallback: Check if apps are in flat structure (legacy format)
+                if not apps_to_check and 'apps' in self.apps_config:
+                    apps_to_check = self.apps_config.get('apps', [])
+                
+                logger.debug(f"Found {len(apps_to_check)} apps to check for status updates")
+                
+                for app in apps_to_check:
+                        app_id = app.get('id', '')
+                        app_name = app.get('name', '')
+                        
+                        # Detect installation
+                        is_installed, installed_version, install_path = self.detect_app_installation(app)
+                        
+                        # Check remote version
+                        remote_version = self.check_remote_version(app)
+                        
+                        # Determine status
+                        if is_installed:
+                            if remote_version and installed_version and installed_version != "Unknown":
+                                # Compare versions (simplified comparison)
+                                if installed_version != remote_version:
+                                    status = "update_available"
+                                else:
+                                    status = "installed"
+                            else:
+                                status = "installed"
+                        else:
+                            status = "not_installed"
+                        
+                        # Update status
+                        self.app_statuses[app_id] = {
+                            'status': status,
+                            'installed_version': installed_version,
+                            'remote_version': remote_version,
+                            'install_path': install_path,
+                            'last_checked': datetime.now().isoformat()
+                        }
+                        
+                        # Update installation states
+                        if is_installed:
+                            self.installation_states["installed_apps"][app_id] = {
+                                'version': installed_version,
+                                'install_path': install_path,
+                                'install_date': self.installation_states.get("installed_apps", {}).get(app_id, {}).get('install_date', datetime.now().isoformat()),
+                                'last_detected': datetime.now().isoformat()
+                            }
+                        else:
+                            # Remove from installed apps if not detected
+                            self.installation_states["installed_apps"].pop(app_id, None)
+                
+                # Save updated states
+                self.save_installation_states()
+                
+                # Update UI on main thread
+                self.root.after(0, self.refresh_app_status_display)
+                
+                self.log_message("✅ Installation status check complete", "success")
+                
+            except Exception as e:
+                logger.error(f"Error updating app statuses: {e}")
+                self.root.after(0, lambda: self.log_message(f"❌ Error checking app statuses: {e}", "error"))
+        
+        # Run in background thread
+        thread = threading.Thread(target=update_statuses, daemon=True)
+        thread.start()
+    
+    def refresh_app_status_display(self):
+        """Refresh the app display with updated status information"""
+        # This will be called to update the UI after status checking
+        # For now, just log that statuses were updated
+        apps_checked = len(self.app_statuses)
+        installed_count = sum(1 for status in self.app_statuses.values() if status['status'] == 'installed')
+        update_count = sum(1 for status in self.app_statuses.values() if status['status'] == 'update_available')
+        
+        self.log_message(f"📊 Status: {installed_count} installed, {update_count} updates available ({apps_checked} total)", "info")
+        
+        # TODO: Update the actual UI elements with status indicators
+        # This will be implemented when we enhance the UI display
     
     def load_current_settings(self):
         """Load current settings into dialog variables"""
