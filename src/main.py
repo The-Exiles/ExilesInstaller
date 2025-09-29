@@ -2677,9 +2677,15 @@ class ExilesInstaller:
                     
                 self.log_message(f"Executing step: {step_name}", "info")
                 
-                # Run PowerShell script
+                # Run PowerShell script (hide CMD window)
                 cmd = ['powershell', '-Command', script]
-                result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
+                kwargs = {'capture_output': True, 'text': True, 'timeout': 120}
+                
+                # Hide command window on Windows
+                if platform.system() == "Windows":
+                    kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+                
+                result = subprocess.run(cmd, **kwargs)
                 
                 if result.returncode == 0:
                     self.log_message(f"Step '{step_name}' completed", "success")
@@ -3322,26 +3328,30 @@ class ExilesInstaller:
             f"C:\\Users\\{os.environ.get('USERNAME', 'User')}\\AppData\\Roaming\\{app_name}"
         ]
         
-        # App-specific detection logic
+        # App-specific detection logic using app IDs from apps.json
         detection_rules = {
-            'AutoHotkey': {
-                'paths': ['C:\\Program Files\\AutoHotkey', 'C:\\Program Files (x86)\\AutoHotkey'],
-                'executables': ['AutoHotkey.exe', 'AutoHotkeyU64.exe']
-            },
-            'vJoy': {
-                'paths': ['C:\\Program Files\\vJoy', 'C:\\Program Files (x86)\\vJoy'],
-                'executables': ['vJoyConf.exe']
-            },
-            'HidHide': {
-                'paths': ['C:\\Program Files\\Nefarius Software Solutions\\HidHide'],
-                'executables': ['HidHideClient.exe']
-            },
-            'EDMarketConnector': {
-                'paths': ['C:\\Program Files (x86)\\EDMarketConnector', 'C:\\Users\\%USERNAME%\\AppData\\Local\\EDMarketConnector'],
+            'EDMC': {  # Fixed: was 'EDMarketConnector'
+                'paths': [
+                    'C:\\Program Files (x86)\\EDMarketConnector', 
+                    'C:\\Users\\%USERNAME%\\AppData\\Local\\EDMarketConnector',
+                    'C:\\Program Files\\EDMarketConnector'
+                ],
                 'executables': ['EDMarketConnector.exe']
             },
+            'EDDI': {
+                'paths': [
+                    'C:\\Program Files (x86)\\EDDI',
+                    'C:\\Users\\%USERNAME%\\AppData\\Local\\EDDI',
+                    'C:\\Program Files\\EDDI'
+                ],
+                'executables': ['EDDI.exe']
+            },
             'EDDiscovery': {
-                'paths': ['C:\\Program Files (x86)\\EDDiscovery', 'C:\\Users\\%USERNAME%\\AppData\\Local\\EDDiscovery'],
+                'paths': [
+                    'C:\\Program Files (x86)\\EDDiscovery', 
+                    'C:\\Users\\%USERNAME%\\AppData\\Local\\EDDiscovery',
+                    'C:\\Program Files\\EDDiscovery'
+                ],
                 'executables': ['EDDiscovery.exe']
             },
             'VoiceAttack': {
@@ -3351,6 +3361,14 @@ class ExilesInstaller:
             'JoystickGremlin': {
                 'paths': ['C:\\Program Files (x86)\\WhiteMagic\\Joystick Gremlin'],
                 'executables': ['joystick_gremlin.exe']
+            },
+            'HidHide': {
+                'paths': ['C:\\Program Files\\Nefarius Software Solutions\\HidHide'],
+                'executables': ['HidHideClient.exe']
+            },
+            'vJoy': {
+                'paths': ['C:\\Program Files\\vJoy', 'C:\\Program Files (x86)\\vJoy'],
+                'executables': ['vJoyConf.exe']
             },
             'opentrack': {
                 'paths': ['C:\\Program Files\\opentrack', 'C:\\Program Files (x86)\\opentrack'],
@@ -3364,10 +3382,6 @@ class ExilesInstaller:
                 'paths': ['C:\\Program Files\\Tobii\\Tobii Game Hub'],
                 'executables': ['TobiiGameHub.exe']
             },
-            'LogitechGHUB': {
-                'paths': ['C:\\Program Files\\LGHUB'],
-                'executables': ['lghub.exe']
-            },
             'VIRPIL-VPC': {
                 'paths': ['C:\\Program Files (x86)\\VIRPIL Controls'],
                 'executables': ['VPC_Panel.exe']
@@ -3379,6 +3393,14 @@ class ExilesInstaller:
             'TARGET': {
                 'paths': ['C:\\Program Files (x86)\\Thrustmaster\\TARGET'],
                 'executables': ['TARGET.exe']
+            },
+            'Logitech-GHUB': {  # Fixed: was 'LogitechGHUB'
+                'paths': ['C:\\Program Files\\LGHUB'],
+                'executables': ['lghub.exe']
+            },
+            'AutoHotkey': {
+                'paths': ['C:\\Program Files\\AutoHotkey', 'C:\\Program Files (x86)\\AutoHotkey'],
+                'executables': ['AutoHotkey.exe', 'AutoHotkeyU64.exe']
             },
             '7zip': {
                 'paths': ['C:\\Program Files\\7-Zip', 'C:\\Program Files (x86)\\7-Zip'],
@@ -3523,12 +3545,20 @@ class ExilesInstaller:
             if not winget_id:
                 return None
             
-            # Run winget show command to get version info
+            # Run winget show command to get version info (hide CMD window)
+            kwargs = {
+                'capture_output': True,
+                'text': True,
+                'timeout': 30
+            }
+            
+            # Hide command window on Windows
+            if platform.system() == "Windows":
+                kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
+            
             result = subprocess.run(
                 ['winget', 'show', winget_id, '--exact'],
-                capture_output=True,
-                text=True,
-                timeout=30
+                **kwargs
             )
             
             if result.returncode == 0:
