@@ -73,18 +73,23 @@ class ExilesInstaller:
         self.selected_apps = set()
         self.installation_progress = {}
         
+        # Load settings from config file
+        self.settings = self.load_settings()
+        
         # Update checking configuration - Exiles Downloads site
+        base_url = self.settings.get('update_server', 'https://downloads.exiles.one').rstrip('/')
         self.update_config = {
-            'check_url': 'https://downloads.exiles.one/api/installer/version',
-            'download_url': 'https://downloads.exiles.one/api/installer/download',
-            'apps_url': 'https://downloads.exiles.one/api/apps.json',
+            'check_url': f'{base_url}/api/installer/version',
+            'download_url': f'{base_url}/api/installer/download',
+            'apps_url': f'{base_url}/api/apps.json',
             'current_version': '1.0.0'
         }
         
         self.setup_ui()
         
-        # Check for updates on startup
-        self.check_for_updates_async()
+        # Check for updates on startup if enabled
+        if self.settings.get('auto_check_updates', True):
+            self.check_for_updates_async()
         
     def load_apps_config(self):
         """Load applications configuration from apps.json"""
@@ -705,7 +710,7 @@ class ExilesInstaller:
         """Download and install a file with streaming and optional checksum validation"""
         try:
             # Create downloads directory
-            downloads_dir = Path.home() / "Downloads" / "ExilesHUD"
+            downloads_dir = Path(self.settings.get('download_directory', Path.home() / "Downloads" / "ExilesHUD"))
             downloads_dir.mkdir(parents=True, exist_ok=True)
             
             file_path = downloads_dir / filename
@@ -713,7 +718,7 @@ class ExilesInstaller:
             # Download file with streaming
             self.log_message(f"Downloading from: {url}", "info")
             
-            with requests.get(url, timeout=30, stream=True) as response:
+            with requests.get(url, timeout=self.settings.get('download_timeout', 300), stream=True) as response:
                 response.raise_for_status()
                 
                 # Get file size if available for progress tracking
@@ -1093,7 +1098,535 @@ class ExilesInstaller:
             
     def show_settings(self):
         """Show settings dialog"""
-        messagebox.showinfo("Settings", "Settings dialog coming soon!")
+        settings_window = tk.Toplevel(self.root)
+        settings_window.title("Exiles Installer Settings")
+        settings_window.geometry("600x500")
+        settings_window.resizable(False, False)
+        settings_window.configure(bg=self.colors['bg_primary'])
+        
+        # Center the window
+        settings_window.transient(self.root)
+        settings_window.grab_set()
+        
+        # Main container
+        main_frame = tk.Frame(settings_window, bg=self.colors['bg_primary'])
+        main_frame.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Title
+        title_label = tk.Label(
+            main_frame,
+            text="◆ EXILES INSTALLER SETTINGS",
+            font=self.fonts['heading'],
+            fg=self.colors['accent_primary'],
+            bg=self.colors['bg_primary']
+        )
+        title_label.pack(pady=(0, 20))
+        
+        # Create notebook for tabbed interface
+        notebook = ttk.Notebook(main_frame)
+        notebook.pack(fill='both', expand=True, pady=(0, 10))
+        
+        # Configure notebook style
+        style = ttk.Style()
+        style.theme_use('clam')
+        style.configure('TNotebook', background=self.colors['bg_secondary'])
+        style.configure('TNotebook.Tab', background=self.colors['bg_panel'], 
+                       foreground=self.colors['text_primary'], padding=[10, 5])
+        style.map('TNotebook.Tab', background=[('selected', self.colors['accent_secondary'])])
+        
+        # General Settings Tab
+        general_frame = tk.Frame(notebook, bg=self.colors['bg_secondary'])
+        notebook.add(general_frame, text="General")
+        self.create_general_settings(general_frame)
+        
+        # Downloads Tab
+        downloads_frame = tk.Frame(notebook, bg=self.colors['bg_secondary'])
+        notebook.add(downloads_frame, text="Downloads")
+        self.create_downloads_settings(downloads_frame)
+        
+        # Updates Tab
+        updates_frame = tk.Frame(notebook, bg=self.colors['bg_secondary'])
+        notebook.add(updates_frame, text="Updates")
+        self.create_updates_settings(updates_frame)
+        
+        # Advanced Tab
+        advanced_frame = tk.Frame(notebook, bg=self.colors['bg_secondary'])
+        notebook.add(advanced_frame, text="Advanced")
+        self.create_advanced_settings(advanced_frame)
+        
+        # Button frame
+        button_frame = tk.Frame(main_frame, bg=self.colors['bg_primary'])
+        button_frame.pack(fill='x', pady=(10, 0))
+        
+        # Save and Cancel buttons
+        tk.Button(
+            button_frame,
+            text="Save Settings",
+            font=self.fonts['ui'],
+            bg=self.colors['accent_primary'],
+            fg=self.colors['text_primary'],
+            command=lambda: self.save_settings(settings_window),
+            relief='flat',
+            bd=0,
+            pady=8,
+            padx=20
+        ).pack(side='right', padx=(10, 0))
+        
+        tk.Button(
+            button_frame,
+            text="Cancel",
+            font=self.fonts['ui'],
+            bg=self.colors['bg_panel'],
+            fg=self.colors['text_primary'],
+            command=settings_window.destroy,
+            relief='flat',
+            bd=0,
+            pady=8,
+            padx=20
+        ).pack(side='right')
+        
+        # Load current settings
+        self.load_current_settings()
+    
+    def create_general_settings(self, parent):
+        """Create general settings tab"""
+        container = tk.Frame(parent, bg=self.colors['bg_secondary'])
+        container.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Download Directory
+        dir_frame = tk.Frame(container, bg=self.colors['bg_secondary'])
+        dir_frame.pack(fill='x', pady=(0, 15))
+        
+        tk.Label(
+            dir_frame,
+            text="Default Download Directory:",
+            font=self.fonts['ui'],
+            fg=self.colors['text_primary'],
+            bg=self.colors['bg_secondary']
+        ).pack(anchor='w')
+        
+        dir_input_frame = tk.Frame(dir_frame, bg=self.colors['bg_secondary'])
+        dir_input_frame.pack(fill='x', pady=(5, 0))
+        
+        self.download_dir_var = tk.StringVar(value=str(Path.home() / "Downloads" / "ExilesHUD"))
+        
+        tk.Entry(
+            dir_input_frame,
+            textvariable=self.download_dir_var,
+            font=self.fonts['ui_small'],
+            bg=self.colors['bg_panel'],
+            fg=self.colors['text_primary'],
+            insertbackground=self.colors['text_primary'],
+            bd=0,
+            relief='flat'
+        ).pack(side='left', fill='x', expand=True, ipady=5)
+        
+        tk.Button(
+            dir_input_frame,
+            text="Browse",
+            font=self.fonts['ui_small'],
+            bg=self.colors['accent_secondary'],
+            fg=self.colors['text_primary'],
+            command=self.browse_download_directory,
+            relief='flat',
+            bd=0,
+            pady=5,
+            padx=10
+        ).pack(side='right', padx=(10, 0))
+        
+        # Installation Behavior
+        install_frame = tk.Frame(container, bg=self.colors['bg_secondary'])
+        install_frame.pack(fill='x', pady=(0, 15))
+        
+        tk.Label(
+            install_frame,
+            text="Installation Options:",
+            font=self.fonts['ui'],
+            fg=self.colors['text_primary'],
+            bg=self.colors['bg_secondary']
+        ).pack(anchor='w')
+        
+        self.run_installers_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(
+            install_frame,
+            text="Automatically run downloaded installers",
+            variable=self.run_installers_var,
+            font=self.fonts['ui_small'],
+            fg=self.colors['text_primary'],
+            bg=self.colors['bg_secondary'],
+            selectcolor=self.colors['bg_panel'],
+            activebackground=self.colors['bg_secondary'],
+            activeforeground=self.colors['text_primary']
+        ).pack(anchor='w', pady=(5, 0))
+        
+        self.cleanup_downloads_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(
+            install_frame,
+            text="Delete downloaded files after installation",
+            variable=self.cleanup_downloads_var,
+            font=self.fonts['ui_small'],
+            fg=self.colors['text_primary'],
+            bg=self.colors['bg_secondary'],
+            selectcolor=self.colors['bg_panel'],
+            activebackground=self.colors['bg_secondary'],
+            activeforeground=self.colors['text_primary']
+        ).pack(anchor='w', pady=(2, 0))
+    
+    def create_downloads_settings(self, parent):
+        """Create downloads settings tab"""
+        container = tk.Frame(parent, bg=self.colors['bg_secondary'])
+        container.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Download Performance
+        perf_frame = tk.Frame(container, bg=self.colors['bg_secondary'])
+        perf_frame.pack(fill='x', pady=(0, 15))
+        
+        tk.Label(
+            perf_frame,
+            text="Download Performance:",
+            font=self.fonts['ui'],
+            fg=self.colors['text_primary'],
+            bg=self.colors['bg_secondary']
+        ).pack(anchor='w')
+        
+        # Concurrent downloads
+        concurrent_frame = tk.Frame(perf_frame, bg=self.colors['bg_secondary'])
+        concurrent_frame.pack(fill='x', pady=(5, 10))
+        
+        tk.Label(
+            concurrent_frame,
+            text="Maximum concurrent downloads:",
+            font=self.fonts['ui_small'],
+            fg=self.colors['text_primary'],
+            bg=self.colors['bg_secondary']
+        ).pack(side='left')
+        
+        self.max_concurrent_var = tk.IntVar(value=3)
+        concurrent_spinner = tk.Spinbox(
+            concurrent_frame,
+            from_=1,
+            to=10,
+            textvariable=self.max_concurrent_var,
+            font=self.fonts['ui_small'],
+            bg=self.colors['bg_panel'],
+            fg=self.colors['text_primary'],
+            insertbackground=self.colors['text_primary'],
+            bd=0,
+            relief='flat',
+            width=5
+        )
+        concurrent_spinner.pack(side='right')
+        
+        # Timeout settings
+        timeout_frame = tk.Frame(perf_frame, bg=self.colors['bg_secondary'])
+        timeout_frame.pack(fill='x', pady=(0, 10))
+        
+        tk.Label(
+            timeout_frame,
+            text="Download timeout (seconds):",
+            font=self.fonts['ui_small'],
+            fg=self.colors['text_primary'],
+            bg=self.colors['bg_secondary']
+        ).pack(side='left')
+        
+        self.download_timeout_var = tk.IntVar(value=300)
+        timeout_spinner = tk.Spinbox(
+            timeout_frame,
+            from_=60,
+            to=1800,
+            increment=30,
+            textvariable=self.download_timeout_var,
+            font=self.fonts['ui_small'],
+            bg=self.colors['bg_panel'],
+            fg=self.colors['text_primary'],
+            insertbackground=self.colors['text_primary'],
+            bd=0,
+            relief='flat',
+            width=8
+        )
+        timeout_spinner.pack(side='right')
+        
+        # Verification Options
+        verify_frame = tk.Frame(container, bg=self.colors['bg_secondary'])
+        verify_frame.pack(fill='x', pady=(0, 15))
+        
+        tk.Label(
+            verify_frame,
+            text="File Verification:",
+            font=self.fonts['ui'],
+            fg=self.colors['text_primary'],
+            bg=self.colors['bg_secondary']
+        ).pack(anchor='w')
+        
+        self.verify_checksums_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(
+            verify_frame,
+            text="Verify file checksums when available",
+            variable=self.verify_checksums_var,
+            font=self.fonts['ui_small'],
+            fg=self.colors['text_primary'],
+            bg=self.colors['bg_secondary'],
+            selectcolor=self.colors['bg_panel'],
+            activebackground=self.colors['bg_secondary'],
+            activeforeground=self.colors['text_primary']
+        ).pack(anchor='w', pady=(5, 0))
+    
+    def create_updates_settings(self, parent):
+        """Create updates settings tab"""
+        container = tk.Frame(parent, bg=self.colors['bg_secondary'])
+        container.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Update Check Settings
+        update_frame = tk.Frame(container, bg=self.colors['bg_secondary'])
+        update_frame.pack(fill='x', pady=(0, 15))
+        
+        tk.Label(
+            update_frame,
+            text="Automatic Updates:",
+            font=self.fonts['ui'],
+            fg=self.colors['text_primary'],
+            bg=self.colors['bg_secondary']
+        ).pack(anchor='w')
+        
+        self.auto_check_updates_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(
+            update_frame,
+            text="Check for updates on startup",
+            variable=self.auto_check_updates_var,
+            font=self.fonts['ui_small'],
+            fg=self.colors['text_primary'],
+            bg=self.colors['bg_secondary'],
+            selectcolor=self.colors['bg_panel'],
+            activebackground=self.colors['bg_secondary'],
+            activeforeground=self.colors['text_primary']
+        ).pack(anchor='w', pady=(5, 0))
+        
+        self.notify_updates_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(
+            update_frame,
+            text="Show notifications for available updates",
+            variable=self.notify_updates_var,
+            font=self.fonts['ui_small'],
+            fg=self.colors['text_primary'],
+            bg=self.colors['bg_secondary'],
+            selectcolor=self.colors['bg_panel'],
+            activebackground=self.colors['bg_secondary'],
+            activeforeground=self.colors['text_primary']
+        ).pack(anchor='w', pady=(2, 0))
+        
+        # Server Settings
+        server_frame = tk.Frame(container, bg=self.colors['bg_secondary'])
+        server_frame.pack(fill='x', pady=(0, 15))
+        
+        tk.Label(
+            server_frame,
+            text="Update Server:",
+            font=self.fonts['ui'],
+            fg=self.colors['text_primary'],
+            bg=self.colors['bg_secondary']
+        ).pack(anchor='w')
+        
+        tk.Label(
+            server_frame,
+            text="Server URL:",
+            font=self.fonts['ui_small'],
+            fg=self.colors['text_primary'],
+            bg=self.colors['bg_secondary']
+        ).pack(anchor='w', pady=(5, 2))
+        
+        self.update_server_var = tk.StringVar(value="https://downloads.exiles.one")
+        tk.Entry(
+            server_frame,
+            textvariable=self.update_server_var,
+            font=self.fonts['ui_small'],
+            bg=self.colors['bg_panel'],
+            fg=self.colors['text_primary'],
+            insertbackground=self.colors['text_primary'],
+            bd=0,
+            relief='flat'
+        ).pack(fill='x', pady=(0, 10), ipady=5)
+    
+    def create_advanced_settings(self, parent):
+        """Create advanced settings tab"""
+        container = tk.Frame(parent, bg=self.colors['bg_secondary'])
+        container.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Logging Settings
+        log_frame = tk.Frame(container, bg=self.colors['bg_secondary'])
+        log_frame.pack(fill='x', pady=(0, 15))
+        
+        tk.Label(
+            log_frame,
+            text="Logging:",
+            font=self.fonts['ui'],
+            fg=self.colors['text_primary'],
+            bg=self.colors['bg_secondary']
+        ).pack(anchor='w')
+        
+        level_frame = tk.Frame(log_frame, bg=self.colors['bg_secondary'])
+        level_frame.pack(fill='x', pady=(5, 0))
+        
+        tk.Label(
+            level_frame,
+            text="Log level:",
+            font=self.fonts['ui_small'],
+            fg=self.colors['text_primary'],
+            bg=self.colors['bg_secondary']
+        ).pack(side='left')
+        
+        self.log_level_var = tk.StringVar(value="INFO")
+        log_combo = ttk.Combobox(
+            level_frame,
+            textvariable=self.log_level_var,
+            values=["DEBUG", "INFO", "WARNING", "ERROR"],
+            font=self.fonts['ui_small'],
+            state="readonly",
+            width=15
+        )
+        log_combo.pack(side='right')
+        
+        # Developer Options
+        dev_frame = tk.Frame(container, bg=self.colors['bg_secondary'])
+        dev_frame.pack(fill='x', pady=(15, 0))
+        
+        tk.Label(
+            dev_frame,
+            text="Developer Options:",
+            font=self.fonts['ui'],
+            fg=self.colors['text_primary'],
+            bg=self.colors['bg_secondary']
+        ).pack(anchor='w')
+        
+        self.debug_mode_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(
+            dev_frame,
+            text="Enable debug mode",
+            variable=self.debug_mode_var,
+            font=self.fonts['ui_small'],
+            fg=self.colors['text_primary'],
+            bg=self.colors['bg_secondary'],
+            selectcolor=self.colors['bg_panel'],
+            activebackground=self.colors['bg_secondary'],
+            activeforeground=self.colors['text_primary']
+        ).pack(anchor='w', pady=(5, 0))
+        
+        self.dry_run_var = tk.BooleanVar(value=False)
+        tk.Checkbutton(
+            dev_frame,
+            text="Dry run mode (download only, don't install)",
+            variable=self.dry_run_var,
+            font=self.fonts['ui_small'],
+            fg=self.colors['text_primary'],
+            bg=self.colors['bg_secondary'],
+            selectcolor=self.colors['bg_panel'],
+            activebackground=self.colors['bg_secondary'],
+            activeforeground=self.colors['text_primary']
+        ).pack(anchor='w', pady=(2, 0))
+    
+    def browse_download_directory(self):
+        """Browse for download directory"""
+        from tkinter import filedialog
+        directory = filedialog.askdirectory(
+            title="Select Download Directory",
+            initialdir=self.download_dir_var.get()
+        )
+        if directory:
+            self.download_dir_var.set(directory)
+    
+    def load_settings(self):
+        """Load settings from configuration file"""
+        default_settings = {
+            'download_directory': str(Path.home() / "Downloads" / "ExilesHUD"),
+            'run_installers': True,
+            'cleanup_downloads': False,
+            'max_concurrent_downloads': 3,
+            'download_timeout': 300,
+            'verify_checksums': True,
+            'auto_check_updates': True,
+            'notify_updates': True,
+            'update_server': 'https://downloads.exiles.one',
+            'log_level': 'INFO',
+            'debug_mode': False,
+            'dry_run': False
+        }
+        
+        try:
+            config_path = Path('exiles_config.json')
+            if config_path.exists():
+                with open(config_path, 'r') as f:
+                    saved_settings = json.load(f)
+                    default_settings.update(saved_settings)
+                    logger.info("Settings loaded from config file")
+            else:
+                logger.info("Using default settings")
+        except Exception as e:
+            logger.warning(f"Failed to load settings: {e}, using defaults")
+        
+        return default_settings
+    
+    def load_current_settings(self):
+        """Load current settings into dialog variables"""
+        if hasattr(self, 'download_dir_var'):
+            self.download_dir_var.set(self.settings.get('download_directory', ''))
+            self.run_installers_var.set(self.settings.get('run_installers', True))
+            self.cleanup_downloads_var.set(self.settings.get('cleanup_downloads', False))
+            self.max_concurrent_var.set(self.settings.get('max_concurrent_downloads', 3))
+            self.download_timeout_var.set(self.settings.get('download_timeout', 300))
+            self.verify_checksums_var.set(self.settings.get('verify_checksums', True))
+            self.auto_check_updates_var.set(self.settings.get('auto_check_updates', True))
+            self.notify_updates_var.set(self.settings.get('notify_updates', True))
+            self.update_server_var.set(self.settings.get('update_server', 'https://downloads.exiles.one'))
+            self.log_level_var.set(self.settings.get('log_level', 'INFO'))
+            self.debug_mode_var.set(self.settings.get('debug_mode', False))
+            self.dry_run_var.set(self.settings.get('dry_run', False))
+    
+    def save_settings(self, settings_window):
+        """Save settings and close dialog"""
+        try:
+            # Update internal configuration
+            new_settings = {
+                'download_directory': self.download_dir_var.get(),
+                'run_installers': self.run_installers_var.get(),
+                'cleanup_downloads': self.cleanup_downloads_var.get(),
+                'max_concurrent_downloads': self.max_concurrent_var.get(),
+                'download_timeout': self.download_timeout_var.get(),
+                'verify_checksums': self.verify_checksums_var.get(),
+                'auto_check_updates': self.auto_check_updates_var.get(),
+                'notify_updates': self.notify_updates_var.get(),
+                'update_server': self.update_server_var.get(),
+                'log_level': self.log_level_var.get(),
+                'debug_mode': self.debug_mode_var.get(),
+                'dry_run': self.dry_run_var.get()
+            }
+            
+            # Update internal settings
+            self.settings.update(new_settings)
+            
+            # Update the update config with new server URL
+            base_url = self.update_server_var.get().rstrip('/')
+            self.update_config.update({
+                'check_url': f'{base_url}/api/installer/version',
+                'download_url': f'{base_url}/api/installer/download',
+                'apps_url': f'{base_url}/api/apps.json'
+            })
+            
+            # Update logging level
+            log_level = getattr(logging, new_settings['log_level'], logging.INFO)
+            logging.getLogger().setLevel(log_level)
+            logger.setLevel(log_level)
+            
+            # Save to config file
+            config_path = Path('exiles_config.json')
+            with open(config_path, 'w') as f:
+                json.dump(new_settings, f, indent=2)
+            
+            self.log_message("◆ Settings saved successfully", "success")
+            messagebox.showinfo("Settings", "Settings saved successfully!")
+            settings_window.destroy()
+            
+        except Exception as e:
+            self.log_message(f"◆ Failed to save settings: {str(e)}", "error")
+            messagebox.showerror("Error", f"Failed to save settings: {str(e)}")
         
     def show_log(self):
         """Open the log file"""
