@@ -45,12 +45,6 @@ def get_resource_path(relative_path):
 
 class ExilesInstaller:
     def __init__(self):
-        self.root = tk.Tk()
-        self.root.title("Exiles Installer - Elite Dangerous Ecosystem")
-        self.root.geometry("1280x1000")
-        self.root.configure(bg=self.colors['bg_primary'])
-        self.root.minsize(1000, 700)
-        
         # Modern Exiles brand color scheme (non-breaking: same keys, brand values)
         self.colors = {
             'bg_primary':    '#0B0F14',  # page background (HUD dark)
@@ -76,6 +70,12 @@ class ExilesInstaller:
             'error':   '#B01515',  # status: error uses brand red
             'info':    '#4AB3D4',  # status: info/cyan
         }
+        
+        self.root = tk.Tk()
+        self.root.title("Exiles Installer - Elite Dangerous Ecosystem")
+        self.root.geometry("1280x1000")
+        self.root.configure(bg=self.colors['bg_primary'])
+        self.root.minsize(1000, 700)
         
         # Modern typography system
         self.fonts = {
