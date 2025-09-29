@@ -33,6 +33,16 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
+def get_resource_path(relative_path):
+    """Get absolute path to resource, works for dev and for PyInstaller"""
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except Exception:
+        base_path = os.path.abspath(".")
+    
+    return os.path.join(base_path, relative_path)
+
 class ExilesInstaller:
     def __init__(self):
         self.root = tk.Tk()
@@ -106,10 +116,35 @@ class ExilesInstaller:
         
     def load_apps_config(self):
         """Load applications configuration from apps.json with multi-game support"""
+        # Try multiple locations for apps.json
+        possible_paths = [
+            get_resource_path('apps.json'),  # PyInstaller bundled path
+            'apps.json',  # Development path
+            'src/apps.json',  # Alternative development path
+        ]
+        
+        config = None
+        apps_path = None
+        
+        for path in possible_paths:
+            try:
+                if os.path.exists(path):
+                    with open(path, 'r', encoding='utf-8') as f:
+                        config = json.load(f)
+                    apps_path = path
+                    logger.info(f"Loaded apps.json from: {path}")
+                    break
+            except (FileNotFoundError, json.JSONDecodeError) as e:
+                logger.debug(f"Could not load from {path}: {e}")
+                continue
+        
+        if config is None:
+            logger.error("apps.json not found in any expected location")
+            messagebox.showerror("Error", 
+                "Configuration file not found. Please ensure apps.json is in the same directory as the installer.")
+            return {"metadata": {}, "games": {"elite_dangerous": {"apps": []}}}
+        
         try:
-            with open('apps.json', 'r') as f:
-                config = json.load(f)
-                
             # Check if this is the new multi-game format
             if "games" in config:
                 return config
@@ -132,13 +167,9 @@ class ExilesInstaller:
             }
             return new_config
             
-        except FileNotFoundError:
-            logger.error("apps.json not found")
-            messagebox.showerror("Error", "apps.json configuration file not found")
-            return {"metadata": {}, "games": {"elite_dangerous": {"apps": []}}}
         except json.JSONDecodeError as e:
-            logger.error(f"Invalid JSON in apps.json: {e}")
-            messagebox.showerror("Error", f"Invalid JSON in apps.json: {e}")
+            logger.error(f"Invalid JSON in {apps_path}: {e}")
+            messagebox.showerror("Error", f"Invalid JSON in configuration file: {e}")
             return {"metadata": {}, "games": {"elite_dangerous": {"apps": []}}}
     
     def get_supported_games(self):
