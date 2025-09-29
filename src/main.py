@@ -624,7 +624,16 @@ class ExilesInstaller:
         # Bind scroll events
         self.apps_scroll_frame.bind('<Configure>', self.on_apps_frame_configure)
         self.apps_canvas.bind('<Configure>', self.on_apps_canvas_configure)
-        self.apps_canvas.bind_all('<MouseWheel>', self.on_apps_mousewheel)
+        
+        # Enhanced mouse wheel support (Windows + Linux/Unix)
+        self.apps_canvas.bind_all('<MouseWheel>', self.on_apps_mousewheel)  # Windows
+        self.apps_canvas.bind_all('<Button-4>', self.on_apps_mousewheel)    # Linux scroll up
+        self.apps_canvas.bind_all('<Button-5>', self.on_apps_mousewheel)    # Linux scroll down
+        
+        # Also bind to the scroll frame for better coverage
+        self.apps_scroll_frame.bind('<MouseWheel>', self.on_apps_mousewheel)
+        self.apps_scroll_frame.bind('<Button-4>', self.on_apps_mousewheel)
+        self.apps_scroll_frame.bind('<Button-5>', self.on_apps_mousewheel)
         
         # Initialize app cards tracking
         self.app_cards = {}
@@ -886,8 +895,18 @@ class ExilesInstaller:
         self.apps_canvas.itemconfig(self.apps_canvas_frame, width=canvas_width)
     
     def on_apps_mousewheel(self, event):
-        """Handle mouse wheel scrolling in app list"""
-        self.apps_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        """Handle mouse wheel scrolling in app list (Windows + Linux/Unix support)"""
+        # Windows mouse wheel
+        if event.delta:
+            # More responsive scrolling - scroll 3 units per wheel tick
+            scroll_amount = int(-1 * (event.delta / 120)) * 3
+            self.apps_canvas.yview_scroll(scroll_amount, "units")
+        
+        # Linux/Unix mouse wheel (Button-4 = scroll up, Button-5 = scroll down)
+        elif event.num == 4:
+            self.apps_canvas.yview_scroll(-3, "units")  # Scroll up
+        elif event.num == 5:
+            self.apps_canvas.yview_scroll(3, "units")   # Scroll down
         
     def create_visual_presets(self, parent):
         """Create visually appealing preset buttons"""
