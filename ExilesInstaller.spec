@@ -7,7 +7,7 @@ datas += collect_data_files('tk')
 
 
 a = Analysis(
-    ['src/main.py'],
+    ['src\\main.py'],
     pathex=[],
     binaries=[],
     datas=datas,
