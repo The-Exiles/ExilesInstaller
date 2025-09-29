@@ -108,11 +108,14 @@
     {
       "id": "EDHM-UI",
       "name": "EDHM-UI HUD Modifier",
-      "install_type": "exe",
-      "url": "https://bluemystical.github.io/edhm-api/edhm_ui_setup.exe",
-      "filename": "EDHM_UI_Setup.exe",
+      "install_methods": [
+        {
+          "type": "web",
+          "url": "https://github.com/BlueMystical/EDHM_UI"
+        }
+      ],
       "optional": true,
-      "description": "Tool for customizing Elite Dangerous HUD colors",
+      "description": "Tool for customizing Elite Dangerous HUD colors (download from GitHub)",
       "category": "Utilities",
       "games": ["elite_dangerous"]
     },
@@ -144,9 +147,17 @@
     {
       "id": "VoiceAttack",
       "name": "VoiceAttack",
-      "install_type": "exe",
-      "url": "https://voiceattack.com/file/VoiceAttackInstall.exe",
-      "filename": "VoiceAttackInstall.exe",
+      "install_methods": [
+        {
+          "type": "winget",
+          "winget_id": "VoiceAttack.VoiceAttack"
+        },
+        {
+          "type": "exe",
+          "url": "https://voiceattack.com/file/VoiceAttackInstall.exe",
+          "filename": "VoiceAttackInstall.exe"
+        }
+      ],
       "optional": true,
       "description": "Voice command software for hands-free operation",
       "category": "Voice & Audio",
@@ -174,9 +185,17 @@
     {
       "id": "HidHide",
       "name": "HidHide Device Filter",
-      "install_type": "github",
-      "github_repo": "nefarius/HidHide",
-      "github_asset": "HidHide",
+      "install_methods": [
+        {
+          "type": "winget",
+          "winget_id": "ViGEm.HidHide"
+        },
+        {
+          "type": "github",
+          "github_repo": "nefarius/HidHide",
+          "github_asset": "HidHide"
+        }
+      ],
       "optional": true,
       "description": "Tool for hiding input devices from games",
       "category": "Hardware & Input",
@@ -185,9 +204,13 @@
     {
       "id": "vJoy",
       "name": "vJoy Virtual Joystick",
-      "install_type": "exe",
-      "url": "https://downloads.sourceforge.net/project/vjoystick/Beta%202.x/2.1.8.39-270518/vJoySetup.exe",
-      "filename": "vJoySetup.exe",
+      "install_methods": [
+        {
+          "type": "exe",
+          "url": "https://downloads.sourceforge.net/project/vjoystick/Beta%202.x/2.1.8.39-270518/vJoySetup.exe",
+          "filename": "vJoySetup.exe"
+        }
+      ],
       "optional": true,
       "description": "Virtual joystick driver for advanced HOTAS setups",
       "category": "Hardware & Input",
@@ -222,22 +245,20 @@
     {
       "id": "TobiiGameHub",
       "name": "Tobii Game Hub",
-      "install_type": "exe",
-      "url": "https://gaming.tobii.com/downloads/TobiiGameHubSetup.exe",
-      "filename": "TobiiGameHubSetup.exe",
+      "install_type": "web",
+      "url": "https://gaming.tobii.com/getstarted/",
       "optional": true,
-      "description": "Tobii eye tracking software for gaming",
+      "description": "Tobii eye tracking software for gaming (download from official site)",
       "category": "Head Tracking",
       "games": ["elite_dangerous", "star_citizen"]
     },
     {
       "id": "VIRPIL-VPC",
       "name": "VIRPIL VPC Configuration Tool",
-      "install_type": "exe",
-      "url": "https://support.virpil.com/storage/Software/VPC_Software_Setup.exe",
-      "filename": "VPC_Software_Setup.exe",
+      "install_type": "web",
+      "url": "https://support.virpil.com/en/support/solutions/47000010107",
       "optional": true,
-      "description": "Configuration software for VIRPIL HOTAS controllers",
+      "description": "Configuration software for VIRPIL HOTAS controllers (download from support page)",
       "category": "Hardware & Input",
       "games": ["elite_dangerous", "star_citizen", "eve_online"]
     },
@@ -256,11 +277,10 @@
     {
       "id": "TARGET",
       "name": "Thrustmaster TARGET",
-      "install_type": "exe",
-      "url": "https://ts.thrustmaster.com/download/pub/tmsoftware/target/TARGET_v3.0.16.426.exe",
-      "filename": "TARGET_v3.0.16.426.exe",
+      "install_type": "web",
+      "url": "https://support.thrustmaster.com/en/",
       "optional": true,
-      "description": "Advanced scripting software for Thrustmaster HOTAS",
+      "description": "Advanced scripting software for Thrustmaster HOTAS (download from device support page)",
       "category": "Hardware & Input",
       "games": ["elite_dangerous", "star_citizen", "eve_online"]
     },
