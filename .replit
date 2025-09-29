@@ -17,6 +17,10 @@ author = "agent"
 task = "workflow.run"
 args = "Test Suite"
 
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Exiles Installer"
+
 [[workflows.workflow]]
 name = "Test Suite"
 author = "agent"
@@ -27,3 +31,14 @@ args = "cd build && python test_installer.py"
 
 [workflows.workflow.metadata]
 outputType = "console"
+
+[[workflows.workflow]]
+name = "Exiles Installer"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd src && python main.py"
+
+[workflows.workflow.metadata]
+outputType = "vnc"
