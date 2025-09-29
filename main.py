@@ -567,7 +567,7 @@ class ExilesInstaller:
         return self.download_and_install(url, filename, app)
         
     def install_via_zip(self, app):
-        """Install application from zip file"""
+        """Install application from zip file with streaming download"""
         url = app.get('url')
         filename = app.get('filename')
         extract_to = app.get('extract_to', filename.replace('.zip', ''))
@@ -579,35 +579,68 @@ class ExilesInstaller:
         self.log_message(f"Downloading zip: {filename}", "info")
         
         try:
-            # Download zip file
+            # Download zip file with streaming
             downloads_dir = Path.home() / "Downloads" / "ExilesHUD"
             downloads_dir.mkdir(parents=True, exist_ok=True)
             
             zip_path = downloads_dir / filename
-            response = requests.get(url, timeout=300)
-            response.raise_for_status()
             
-            with open(zip_path, 'wb') as f:
-                f.write(response.content)
+            with requests.get(url, timeout=30, stream=True) as response:
+                response.raise_for_status()
                 
-            self.log_message(f"Downloaded zip to: {zip_path}", "info")
+                total_size = int(response.headers.get('content-length', 0))
+                downloaded_size = 0
+                
+                # Initialize hash calculator if checksum is provided and not empty
+                expected_checksum = app.get('checksum', '').strip()
+                hash_calculator = hashlib.sha256() if expected_checksum else None
+                if expected_checksum:
+                    self.log_message(f"Will verify checksum: {expected_checksum[:16]}...", "info")
+                
+                with open(zip_path, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+                            downloaded_size += len(chunk)
+                            
+                            if hash_calculator:
+                                hash_calculator.update(chunk)
+                
+            self.log_message(f"Downloaded zip to: {zip_path} ({downloaded_size} bytes)", "info")
+            
+            # Verify checksum if provided
+            if expected_checksum and hash_calculator:
+                calculated_checksum = hash_calculator.hexdigest()
+                if calculated_checksum.lower() == expected_checksum.lower():
+                    self.log_message("Zip checksum verification passed", "success")
+                else:
+                    self.log_message(f"Zip checksum verification failed! Expected: {expected_checksum}, Got: {calculated_checksum}", "error")
+                    zip_path.unlink(missing_ok=True)
+                    return False
             
             # Extract zip
             extract_path = downloads_dir / extract_to
-            with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-                zip_ref.extractall(extract_path)
-                
-            self.log_message(f"Extracted to: {extract_path}", "info")
+            try:
+                with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+                    zip_ref.extractall(extract_path)
+                self.log_message(f"Extracted to: {extract_path}", "info")
+            except zipfile.BadZipFile:
+                self.log_message("Downloaded file is not a valid zip archive", "error")
+                zip_path.unlink(missing_ok=True)
+                return False
             
             # Run post-installation steps
             return self.run_post_steps(app)
             
+        except requests.exceptions.RequestException as e:
+            self.log_message(f"Network error during zip download: {str(e)}", "error")
+            return False
         except Exception as e:
             self.log_message(f"Zip installation error: {str(e)}", "error")
             return False
             
     def download_and_install(self, url, filename, app):
-        """Download and install a file"""
+        """Download and install a file with streaming and optional checksum validation"""
         try:
             # Create downloads directory
             downloads_dir = Path.home() / "Downloads" / "ExilesHUD"
@@ -615,15 +648,50 @@ class ExilesInstaller:
             
             file_path = downloads_dir / filename
             
-            # Download file
+            # Download file with streaming
             self.log_message(f"Downloading from: {url}", "info")
-            response = requests.get(url, timeout=300)
-            response.raise_for_status()
             
-            with open(file_path, 'wb') as f:
-                f.write(response.content)
+            with requests.get(url, timeout=30, stream=True) as response:
+                response.raise_for_status()
                 
-            self.log_message(f"Downloaded to: {file_path}", "info")
+                # Get file size if available for progress tracking
+                total_size = int(response.headers.get('content-length', 0))
+                downloaded_size = 0
+                
+                # Initialize hash calculator if checksum is provided and not empty
+                expected_checksum = app.get('checksum', '').strip()
+                hash_calculator = hashlib.sha256() if expected_checksum else None
+                if expected_checksum:
+                    self.log_message(f"Will verify checksum: {expected_checksum[:16]}...", "info")
+                
+                with open(file_path, 'wb') as f:
+                    for chunk in response.iter_content(chunk_size=8192):
+                        if chunk:
+                            f.write(chunk)
+                            downloaded_size += len(chunk)
+                            
+                            # Update hash
+                            if hash_calculator:
+                                hash_calculator.update(chunk)
+                            
+                            # Update progress if total size known
+                            if total_size > 0:
+                                progress = (downloaded_size / total_size) * 100
+                                if downloaded_size % (1024 * 1024) == 0:  # Log every MB
+                                    self.log_message(f"Downloaded {downloaded_size // (1024*1024)}MB of {total_size // (1024*1024)}MB ({progress:.1f}%)", "info")
+                
+            self.log_message(f"Download completed: {file_path} ({downloaded_size} bytes)", "info")
+            
+            # Verify checksum if provided
+            if expected_checksum and hash_calculator:
+                calculated_checksum = hash_calculator.hexdigest()
+                if calculated_checksum.lower() == expected_checksum.lower():
+                    self.log_message("Checksum verification passed", "success")
+                else:
+                    self.log_message(f"Checksum verification failed! Expected: {expected_checksum}, Got: {calculated_checksum}", "error")
+                    # Delete the potentially corrupted file
+                    file_path.unlink(missing_ok=True)
+                    return False
             
             # Install the file
             if filename.endswith('.exe') or filename.endswith('.msi'):
@@ -632,6 +700,9 @@ class ExilesInstaller:
                 self.log_message("File downloaded successfully", "success")
                 return self.run_post_steps(app)
                 
+        except requests.exceptions.RequestException as e:
+            self.log_message(f"Network error during download: {str(e)}", "error")
+            return False
         except Exception as e:
             self.log_message(f"Download error: {str(e)}", "error")
             return False
@@ -642,18 +713,22 @@ class ExilesInstaller:
             self.log_message(f"Running installer: {file_path.name}", "info")
             
             if file_path.suffix.lower() == '.msi':
-                cmd = ['msiexec', '/i', str(file_path), '/quiet']
+                cmd = ['msiexec', '/i', str(file_path), '/quiet', '/norestart']
             else:
                 cmd = [str(file_path), '/S']  # Common silent install flag
                 
-            result = subprocess.run(cmd, timeout=600)
+            result = subprocess.run(cmd, timeout=600, capture_output=True, text=True)
             
             if result.returncode == 0:
-                self.log_message("Installation completed", "success")
-                return self.run_post_steps(app)
+                self.log_message("Installation completed successfully", "success")
+                # Run post-steps only if main installation succeeded
+                post_success = self.run_post_steps(app)
+                return post_success
             else:
-                self.log_message(f"Installer returned code: {result.returncode}", "warning")
-                return self.run_post_steps(app)
+                self.log_message(f"Installation failed with exit code: {result.returncode}", "error")
+                if result.stderr:
+                    self.log_message(f"Installer error output: {result.stderr}", "error")
+                return False
                 
         except subprocess.TimeoutExpired:
             self.log_message("Installer timed out", "error")
@@ -771,10 +846,12 @@ class ExilesInstaller:
                 import platform
                 system = platform.system()
                 if system == "Windows":
-                    import os
-                    if hasattr(os, 'startfile'):
-                        os.startfile(str(log_path))
-                    else:
+                    try:
+                        if hasattr(os, 'startfile'):
+                            os.startfile(str(log_path))
+                        else:
+                            subprocess.run(['notepad.exe', str(log_path)])
+                    except (AttributeError, OSError):
                         subprocess.run(['notepad.exe', str(log_path)])
                 elif system == "Darwin":  # macOS
                     subprocess.run(["open", str(log_path)])

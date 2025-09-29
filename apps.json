@@ -11,7 +11,8 @@
       "github_repo": "EDCD/EDMarketConnector", 
       "github_asset": "EDMarketConnector_Setup.exe", 
       "optional": false,
-      "description": "Essential tool for uploading market data to EDDN"
+      "description": "Essential tool for uploading market data to EDDN",
+      "checksum": ""
     },
     { 
       "id": "EDDI", 
@@ -187,7 +188,8 @@
       "install_type": "winget", 
       "winget_id": "7zip.7zip", 
       "optional": true,
-      "description": "File archiver with high compression ratio"
+      "description": "File archiver with high compression ratio",
+      "checksum": ""
     }
   ]
 }
