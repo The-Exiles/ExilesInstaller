@@ -19,7 +19,7 @@ args = "Test Suite"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Exiles Installer"
+args = "Exiles Installer GUI"
 
 [[workflows.workflow]]
 name = "Test Suite"
@@ -33,7 +33,7 @@ args = "cd build && python test_installer.py"
 outputType = "console"
 
 [[workflows.workflow]]
-name = "Exiles Installer"
+name = "Exiles Installer GUI"
 author = "agent"
 
 [[workflows.workflow.tasks]]
