@@ -31,7 +31,3 @@ outputType = "vnc"
 [deployment]
 deploymentTarget = "vm"
 run = ["python", "src/main.py"]
-
-[[ports]]
-localPort = 46353
-externalPort = 80
