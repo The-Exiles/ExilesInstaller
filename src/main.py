@@ -73,11 +73,11 @@ class ExilesInstaller:
         self.selected_apps = set()
         self.installation_progress = {}
         
-        # Update checking configuration
+        # Update checking configuration - Exiles Downloads site
         self.update_config = {
-            'check_url': 'https://your-squad-vps.com/api/installer/version',
-            'download_url': 'https://your-squad-vps.com/api/installer/download',
-            'apps_url': 'https://your-squad-vps.com/api/apps.json',
+            'check_url': 'https://downloads.exiles.one/api/installer/version',
+            'download_url': 'https://downloads.exiles.one/api/installer/download',
+            'apps_url': 'https://downloads.exiles.one/api/apps.json',
             'current_version': '1.0.0'
         }
         
@@ -1105,9 +1105,8 @@ class ExilesInstaller:
                 system = platform.system()
                 if system == "Windows":
                     try:
-                        import os
                         if hasattr(os, 'startfile'):
-                            os.startfile(str(log_path))
+                            os.startfile(str(log_path))  # type: ignore
                         else:
                             subprocess.run(['notepad.exe', str(log_path)])
                     except (AttributeError, OSError):
