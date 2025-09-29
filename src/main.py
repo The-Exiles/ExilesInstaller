@@ -130,7 +130,7 @@ class ExilesInstaller:
         
         # Main content with visual cards
         content_frame = tk.Frame(main_frame, bg=self.colors['bg_primary'])
-        content_frame.pack(side='top', fill='both', expand=True, padx=30, pady=20)
+        content_frame.pack(side='top', fill='both', expand=True, padx=30, pady=(20, 10))
         
         # Create visual dashboard layout
         self.create_visual_dashboard(content_frame)
@@ -536,22 +536,27 @@ class ExilesInstaller:
             
             apps = self.apps_config.get('apps', [])
             
-            # App icons mapping for visual appeal
+            # App icons mapping with professional symbols
             app_icons = {
-                'EDMC': '📊',
-                'EDDI': '🎤',
-                'VoiceAttack': '🗣️',
-                'EDDiscovery': '🗺️',
-                'JoystickGremlin': '🕹️',
-                'HidHide': '🔧',
-                'vJoy': '🎮',
-                'opentrack': '👁️',
-                'TrackIR': '📹',
-                'Tobii Game Hub': '👀',
-                'VIRPIL VPC': '✈️',
-                'VKB DevCfg': '⚙️',
-                'Thrustmaster TARGET': '🎯',
-                'Logitech Gaming Software': '🖱️'
+                'EDMC': '◈',        # Market data connector
+                'EDDI': '♪',        # Voice response system
+                'VoiceAttack': '▶',  # Voice command software
+                'EDDiscovery': '⊙',  # Exploration tracking
+                'EDEngineer': '⚒',   # Engineering materials
+                'EDHM-UI': '◐',     # HUD modifier
+                'EDMC-Overlay': '▣', # Overlay plugin
+                'JoystickGremlin': '◒', # Joystick configuration
+                'HidHide': '◎',     # Device filter
+                'vJoy': '◯',        # Virtual joystick
+                'opentrack': '◉',   # Head tracking
+                'TrackIR': '●',     # Head tracking hardware
+                'TobiiGameHub': '◉●', # Eye tracking
+                'VIRPIL-VPC': '✈',  # Flight controls
+                'VKBDevCfg': '⚙',   # Configuration tool
+                'TARGET': '◘',      # Programming software
+                'Logitech-GHUB': '◆', # Gaming peripherals
+                'AutoHotkey': '⚡',  # Automation scripts
+                '7zip': '📦'        # Archive manager
             }
             
             # Apply current filter
@@ -937,9 +942,9 @@ class ExilesInstaller:
         
     def create_visual_control_dock(self, parent):
         """Create a visual control dock"""
-        # Control dock container
-        dock = tk.Frame(parent, bg=self.colors['bg_secondary'], height=120)
-        dock.pack(side='bottom', fill='x', padx=20, pady=(0, 20))
+        # Control dock container  
+        dock = tk.Frame(parent, bg=self.colors['bg_secondary'], height=100)
+        dock.pack(side='bottom', fill='x', padx=20, pady=(5, 15))
         dock.pack_propagate(False)
         
         # Dock content
