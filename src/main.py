@@ -73,7 +73,18 @@ class ExilesInstaller:
         self.selected_apps = set()
         self.installation_progress = {}
         
+        # Update checking configuration
+        self.update_config = {
+            'check_url': 'https://your-squad-vps.com/api/installer/version',
+            'download_url': 'https://your-squad-vps.com/api/installer/download',
+            'apps_url': 'https://your-squad-vps.com/api/apps.json',
+            'current_version': '1.0.0'
+        }
+        
         self.setup_ui()
+        
+        # Check for updates on startup
+        self.check_for_updates_async()
         
     def load_apps_config(self):
         """Load applications configuration from apps.json"""
@@ -346,10 +357,25 @@ class ExilesInstaller:
         tk.Button(
             control_frame,
             text="View Log",
-            font=('Consolas', 10),
+            font=self.fonts['ui_small'],
             bg=self.colors['bg_panel'],
             fg=self.colors['text_primary'],
-            command=self.show_log
+            command=self.show_log,
+            relief='flat',
+            bd=0,
+            pady=8
+        ).pack(side='right', padx=(0, 10), pady=20)
+        
+        tk.Button(
+            control_frame,
+            text="◆ Check Updates",
+            font=self.fonts['ui_small'],
+            bg=self.colors['accent_secondary'],
+            fg=self.colors['text_primary'],
+            command=self.manual_update_check,
+            relief='flat',
+            bd=0,
+            pady=8
         ).pack(side='right', padx=(0, 10), pady=20)
         
     def create_quick_selection_buttons(self, parent):
@@ -772,6 +798,202 @@ class ExilesInstaller:
         except Exception as e:
             self.log_message(f"Installer error: {str(e)}", "error")
             return False
+    
+    def check_for_updates_async(self):
+        """Check for updates in background thread"""
+        def check_updates():
+            try:
+                self.check_for_updates()
+            except Exception as e:
+                logger.error(f"Update check failed: {e}")
+        
+        # Run update check in background thread so UI doesn't freeze
+        update_thread = threading.Thread(target=check_updates, daemon=True)
+        update_thread.start()
+    
+    def check_for_updates(self):
+        """Check for installer and apps updates from squad VPS"""
+        try:
+            self.log_message("◆ Checking for updates from squad VPS...", "info")
+            
+            # Check installer version
+            response = requests.get(
+                self.update_config['check_url'],
+                timeout=10,
+                headers={'User-Agent': 'ExilesInstaller/1.0.0'}
+            )
+            
+            if response.status_code == 200:
+                version_data = response.json()
+                latest_version = version_data.get('version', '1.0.0')
+                apps_updated = version_data.get('apps_updated', '')
+                
+                if latest_version != self.update_config['current_version']:
+                    self.log_message(f"◆ New installer version available: {latest_version}", "warning")
+                    self.prompt_installer_update(latest_version)
+                
+                # Check if apps database is newer
+                current_apps_date = self.apps_config.get('metadata', {}).get('updated', '')
+                if apps_updated and apps_updated != current_apps_date:
+                    self.log_message(f"◆ Updated apps database available: {apps_updated}", "warning")
+                    self.prompt_apps_update()
+                
+                if latest_version == self.update_config['current_version'] and apps_updated == current_apps_date:
+                    self.log_message("◆ All systems up to date", "success")
+            else:
+                self.log_message(f"◆ Update check failed: HTTP {response.status_code}", "warning")
+                
+        except requests.exceptions.RequestException as e:
+            self.log_message(f"◆ Cannot reach squad VPS: {str(e)}", "warning")
+        except Exception as e:
+            self.log_message(f"◆ Update check error: {str(e)}", "error")
+    
+    def prompt_installer_update(self, new_version):
+        """Prompt user to update installer"""
+        def update_installer():
+            result = messagebox.askyesno(
+                "Installer Update",
+                f"New Exiles Installer version {new_version} is available!\n\n"
+                "Would you like to download and install the update?"
+            )
+            if result:
+                self.download_installer_update(new_version)
+        
+        # Schedule UI update for main thread
+        self.root.after(0, update_installer)
+    
+    def prompt_apps_update(self):
+        """Prompt user to update apps database"""
+        def update_apps():
+            result = messagebox.askyesno(
+                "Apps Database Update",
+                "Updated applications database is available!\n\n"
+                "Would you like to download the latest apps catalog?"
+            )
+            if result:
+                self.download_apps_update()
+        
+        # Schedule UI update for main thread
+        self.root.after(0, update_apps)
+    
+    def download_installer_update(self, new_version):
+        """Download and prepare installer update"""
+        try:
+            self.log_message(f"◆ Downloading installer update v{new_version}...", "info")
+            
+            # Create updates directory
+            updates_dir = Path.home() / "Downloads" / "ExilesHUD" / "Updates"
+            updates_dir.mkdir(parents=True, exist_ok=True)
+            
+            # Download new installer
+            response = requests.get(
+                self.update_config['download_url'],
+                timeout=300,
+                stream=True,
+                headers={'User-Agent': 'ExilesInstaller/1.0.0'}
+            )
+            response.raise_for_status()
+            
+            installer_path = updates_dir / f"ExilesInstaller_v{new_version}.exe"
+            
+            with open(installer_path, 'wb') as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+            
+            self.log_message(f"◆ Update downloaded: {installer_path}", "success")
+            
+            # Offer to run the update
+            result = messagebox.askyesno(
+                "Update Ready",
+                f"Installer update has been downloaded to:\n{installer_path}\n\n"
+                "Would you like to run the update now?\n"
+                "(This will close the current installer)"
+            )
+            
+            if result:
+                subprocess.Popen([str(installer_path)])
+                self.root.destroy()
+                
+        except Exception as e:
+            self.log_message(f"◆ Update download failed: {str(e)}", "error")
+    
+    def download_apps_update(self):
+        """Download updated apps database"""
+        try:
+            self.log_message("◆ Downloading updated apps database...", "info")
+            
+            response = requests.get(
+                self.update_config['apps_url'],
+                timeout=60,
+                headers={'User-Agent': 'ExilesInstaller/1.0.0'}
+            )
+            response.raise_for_status()
+            
+            # Backup current apps.json
+            backup_path = Path('apps.json.backup')
+            if Path('apps.json').exists():
+                Path('apps.json').rename(backup_path)
+            
+            # Save new apps.json
+            new_config = response.json()
+            with open('apps.json', 'w') as f:
+                json.dump(new_config, f, indent=2)
+            
+            # Reload configuration
+            self.apps_config = new_config
+            
+            self.log_message("◆ Apps database updated successfully", "success")
+            
+            # Refresh app list in UI
+            self.update_app_list()
+            
+            messagebox.showinfo(
+                "Update Complete",
+                "Apps database has been updated!\n"
+                "The application list has been refreshed with the latest tools."
+            )
+            
+        except Exception as e:
+            self.log_message(f"◆ Apps update failed: {str(e)}", "error")
+            # Restore backup if it exists
+            backup_path = Path('apps.json.backup')
+            if backup_path.exists():
+                backup_path.rename('apps.json')
+                self.log_message("◆ Restored previous apps database", "info")
+    
+    def manual_update_check(self):
+        """Manually trigger update check"""
+        self.log_message("◆ Manual update check requested", "info")
+        self.check_for_updates_async()
+    
+    def update_app_list(self):
+        """Refresh the application list in the UI"""
+        try:
+            # Clear current selection
+            self.selected_apps.clear()
+            
+            # Reload the apps listbox if it exists
+            if hasattr(self, 'apps_listbox'):
+                self.apps_listbox.delete(0, tk.END)
+                
+                # Repopulate with updated apps
+                apps = self.apps_config.get('apps', [])
+                for app in apps:
+                    name = app.get('name', 'Unknown')
+                    optional = app.get('optional', True)
+                    status = '□' if optional else '■'
+                    display_text = f"{status} {name}"
+                    self.apps_listbox.insert(tk.END, display_text)
+                    
+                    # Auto-select non-optional apps
+                    if not optional:
+                        self.selected_apps.add(app.get('id'))
+                        
+            self.log_message("◆ Application list refreshed", "info")
+            
+        except Exception as e:
+            self.log_message(f"◆ Failed to refresh app list: {str(e)}", "error")
             
     def run_post_steps(self, app):
         """Run post-installation steps"""
