@@ -70,11 +70,11 @@ class ExilesInstaller:
         except FileNotFoundError:
             logger.error("apps.json not found")
             messagebox.showerror("Error", "apps.json configuration file not found")
-            return {"meta": {}, "apps": []}
+            return {"metadata": {}, "apps": []}
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON in apps.json: {e}")
             messagebox.showerror("Error", f"Invalid JSON in apps.json: {e}")
-            return {"meta": {}, "apps": []}
+            return {"metadata": {}, "apps": []}
             
     def setup_ui(self):
         """Setup the main user interface with spaceship HUD styling"""
@@ -125,7 +125,7 @@ class ExilesInstaller:
         subtitle_label.pack()
         
         # Version info
-        meta = self.apps_config.get('meta', {})
+        meta = self.apps_config.get('metadata', {})
         version_text = f"Database: {meta.get('updated', 'Unknown')} | Maintainer: {meta.get('maintainer', 'Unknown')}"
         version_label = tk.Label(
             header_frame,
