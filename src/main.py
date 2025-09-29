@@ -440,8 +440,8 @@ class ExilesInstaller:
         list_container = tk.Frame(parent, bg=self.colors['bg_secondary'])
         list_container.pack(fill='both', expand=True, padx=20, pady=20)
         
-        # Search/filter section
-        filter_section = tk.Frame(list_container, bg=self.colors['bg_panel'], height=50)
+        # Search/filter section  
+        filter_section = tk.Frame(list_container, bg=self.colors['bg_panel'], height=90)
         filter_section.pack(fill='x', pady=(0, 15))
         filter_section.pack_propagate(False)
         
@@ -474,6 +474,38 @@ class ExilesInstaller:
         )
         search_entry.pack(fill='x', ipady=8)
         search_entry.bind('<KeyRelease>', self.filter_apps)
+        
+        # Filter dropdown for installation types
+        filter_type_frame = tk.Frame(filter_content, bg=self.colors['bg_panel'])
+        filter_type_frame.pack(fill='x', pady=(10, 0))
+        
+        type_label = tk.Label(
+            filter_type_frame,
+            text="Type:",
+            font=('Segoe UI', 10),
+            fg=self.colors['text_muted'],
+            bg=self.colors['bg_panel']
+        )
+        type_label.pack(side='left', padx=(0, 10))
+        
+        self.filter_type_var = tk.StringVar(value="All")
+        type_options = ["All", "Essential", "Optional", "GitHub", "Direct Download", "Windows Package"]
+        
+        type_dropdown = tk.OptionMenu(
+            filter_type_frame,
+            self.filter_type_var,
+            *type_options,
+            command=self.on_filter_change
+        )
+        type_dropdown.configure(
+            bg=self.colors['bg_primary'],
+            fg=self.colors['text_primary'],
+            activebackground=self.colors['bg_hover'],
+            activeforeground=self.colors['text_primary'],
+            bd=0,
+            relief='flat'
+        )
+        type_dropdown.pack(side='left')
         
         # Modern app cards container
         apps_container = tk.Frame(list_container, bg=self.colors['bg_secondary'])
@@ -559,17 +591,34 @@ class ExilesInstaller:
                 '7zip': '📦'        # Archive manager
             }
             
-            # Apply current filter
+            # Apply current filters
             filter_text = self.filter_var.get().lower() if hasattr(self, 'filter_var') else ""
+            filter_type = self.filter_type_var.get() if hasattr(self, 'filter_type_var') else "All"
             
             for app in apps:
                 app_name = app.get('name', 'Unknown')
                 app_description = app.get('description', '')
+                app_id = app.get('id', '')
+                install_type = app.get('install_type', '')
+                is_optional = app.get('optional', True)
                 
-                # Apply filter
+                # Apply text filter
                 if filter_text and (filter_text not in app_name.lower() and 
                                    filter_text not in app_description.lower()):
                     continue
+                
+                # Apply type filter
+                if filter_type != "All":
+                    if filter_type == "Essential" and is_optional:
+                        continue
+                    elif filter_type == "Optional" and not is_optional:
+                        continue
+                    elif filter_type == "GitHub" and install_type != "github":
+                        continue
+                    elif filter_type == "Direct Download" and install_type not in ["exe", "zip"]:
+                        continue
+                    elif filter_type == "Windows Package" and install_type != "winget":
+                        continue
                 
                 self.create_app_card(app, app_icons)
                 
@@ -1076,6 +1125,14 @@ class ExilesInstaller:
                     
         except Exception as e:
             logger.error(f"Error filtering apps: {e}")
+    
+    def on_filter_change(self, value=None):
+        """Handle filter type dropdown changes"""
+        try:
+            # Refresh the cards with new filter
+            self.populate_app_cards()
+        except Exception as e:
+            logger.error(f"Error changing filter: {e}")
     
     def apply_preset(self, app_ids):
         """Apply a preset selection with card interface"""
