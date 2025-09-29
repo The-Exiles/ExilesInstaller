@@ -39,7 +39,7 @@
       "name": "ED Market Connector",
       "install_type": "github",
       "github_repo": "EDCD/EDMarketConnector",
-      "github_asset": "EDMarketConnector_Setup.exe",
+      "github_asset": "EDMarketConnector",
       "optional": false,
       "description": "Essential tool for uploading market data to EDDN",
       "category": "Core Tools",
@@ -79,7 +79,7 @@
       "name": "EDEngineer",
       "install_type": "github",
       "github_repo": "msarilar/EDEngineer",
-      "github_asset": "EDEngineer-Setup.exe",
+      "github_asset": "EDEngineer",
       "optional": true,
       "description": "Engineering materials and blueprint tracker",
       "category": "Utilities",
@@ -101,7 +101,7 @@
       "name": "EDMC Overlay Plugin",
       "install_type": "github",
       "github_repo": "inorton/EDMCOverlay",
-      "github_asset": "EDMCOverlay.zip",
+      "github_asset": "EDMCOverlay",
       "optional": true,
       "description": "Overlay plugin for EDMC to display information in-game",
       "category": "Utilities",
@@ -131,9 +131,17 @@
     {
       "id": "JoystickGremlin",
       "name": "Joystick Gremlin",
-      "install_type": "github",
-      "github_repo": "WhiteMagic/JoystickGremlin",
-      "github_asset": "JoystickGremlin-13.3.msi",
+      "install_methods": [
+        {
+          "type": "winget",
+          "winget_id": "H2IK.JoystickGremlin"
+        },
+        {
+          "type": "github",
+          "github_repo": "WhiteMagic/JoystickGremlin",
+          "github_asset": "JoystickGremlin"
+        }
+      ],
       "optional": true,
       "description": "Advanced joystick configuration and macro tool",
       "category": "Hardware & Input",
@@ -144,7 +152,7 @@
       "name": "HidHide Device Filter",
       "install_type": "github",
       "github_repo": "nefarius/HidHide",
-      "github_asset": "HidHide_1.4.192_x64.exe",
+      "github_asset": "HidHide"
       "optional": true,
       "description": "Tool for hiding input devices from games",
       "category": "Hardware & Input",
@@ -166,7 +174,7 @@
       "name": "OpenTrack Head Tracking",
       "install_type": "github",
       "github_repo": "opentrack/opentrack",
-      "github_asset": "opentrack-2024-06-23.exe",
+      "github_asset": "opentrack",
       "optional": true,
       "description": "Free head tracking software for enhanced immersion",
       "category": "Head Tracking",
@@ -241,8 +249,17 @@
     {
       "id": "AutoHotkey",
       "name": "AutoHotkey v2",
-      "install_type": "winget",
-      "winget_id": "AutoHotkey.AutoHotkey",
+      "install_methods": [
+        {
+          "type": "winget",
+          "winget_id": "Lexikos.AutoHotkey"
+        },
+        {
+          "type": "github",
+          "github_repo": "AutoHotkey/AutoHotkey",
+          "github_asset": "AutoHotkey"
+        }
+      ],
       "optional": true,
       "description": "Automation scripting language for Windows",
       "category": "Utilities",

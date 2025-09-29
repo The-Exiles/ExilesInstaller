@@ -1681,8 +1681,14 @@ class ExilesInstaller:
             self.root.after(0, self.installation_complete, completed, total_apps)
             
     def install_single_app(self, app):
-        """Install a single application"""
+        """Install a single application with fallback methods"""
         try:
+            # Check for fallback methods first
+            fallback_methods = app.get('install_methods', [])
+            if fallback_methods:
+                return self._install_with_fallbacks(app, fallback_methods)
+            
+            # Legacy single install_type support
             install_type = app.get('install_type', 'unknown')
             
             if install_type == 'winget':
@@ -1703,6 +1709,48 @@ class ExilesInstaller:
             self.log_message(f"Error installing app: {str(e)}", "error")
             logger.exception(f"Failed to install {app.get('name', 'Unknown')}")
             return False
+    
+    def _install_with_fallbacks(self, app, methods):
+        """Try multiple installation methods until one succeeds"""
+        app_name = app.get('name', 'Unknown')
+        
+        for i, method in enumerate(methods):
+            method_type = method.get('type', 'unknown')
+            self.log_message(f"Trying method {i+1}/{len(methods)}: {method_type}", "info")
+            
+            # Create temporary app config with method details
+            temp_app = dict(app)  # Copy base app config
+            temp_app.update(method)  # Override with method-specific config
+            temp_app['install_type'] = method_type
+            
+            try:
+                success = False
+                if method_type == 'winget':
+                    success = self.install_via_winget(temp_app)
+                elif method_type == 'github':
+                    success = self.install_via_github(temp_app)
+                elif method_type in ['exe', 'msi']:
+                    success = self.install_via_direct_download(temp_app)
+                elif method_type == 'zip':
+                    success = self.install_via_zip(temp_app)
+                elif method_type == 'web':
+                    success = self.install_via_web(temp_app)
+                else:
+                    self.log_message(f"Unknown method type: {method_type}", "warning")
+                    continue
+                
+                if success:
+                    self.log_message(f"Successfully installed {app_name} using method: {method_type}", "success")
+                    return True
+                else:
+                    self.log_message(f"Method {method_type} failed, trying next method...", "warning")
+                    
+            except Exception as e:
+                self.log_message(f"Method {method_type} error: {str(e)}", "warning")
+                continue
+        
+        self.log_message(f"All installation methods failed for {app_name}", "error")
+        return False
             
     def install_via_winget(self, app):
         """Install application via winget"""
@@ -1732,12 +1780,12 @@ class ExilesInstaller:
             return False
             
     def install_via_github(self, app):
-        """Install application from GitHub releases"""
+        """Install application from GitHub releases with smart asset matching"""
         repo = app.get('github_repo')
-        asset_name = app.get('github_asset')
+        asset_pattern = app.get('github_asset')
         
-        if not repo or not asset_name:
-            self.log_message("Missing GitHub repository or asset name", "error")
+        if not repo or not asset_pattern:
+            self.log_message("Missing GitHub repository or asset pattern", "error")
             return False
             
         self.log_message(f"Downloading from GitHub: {repo}", "info")
@@ -1749,24 +1797,90 @@ class ExilesInstaller:
             response.raise_for_status()
             
             release_data = response.json()
+            assets = release_data.get('assets', [])
             
-            # Find matching asset
+            if not assets:
+                self.log_message("No assets found in latest release", "error")
+                return False
+            
+            # Find matching asset using smart matching
             download_url = None
-            for asset in release_data.get('assets', []):
-                if asset_name in asset.get('name', ''):
+            matched_asset_name = None
+            
+            # Try multiple matching strategies
+            for asset in assets:
+                asset_name = asset.get('name', '')
+                
+                # Strategy 1: Exact match (original behavior)
+                if asset_pattern == asset_name:
                     download_url = asset.get('browser_download_url')
+                    matched_asset_name = asset_name
+                    self.log_message(f"Found exact match: {asset_name}", "info")
+                    break
+                    
+                # Strategy 2: Contains pattern (case insensitive)
+                if asset_pattern.lower() in asset_name.lower():
+                    download_url = asset.get('browser_download_url')
+                    matched_asset_name = asset_name
+                    self.log_message(f"Found pattern match: {asset_name}", "info")
+                    break
+                    
+                # Strategy 3: Pattern matching for common variations
+                if self._matches_asset_pattern(asset_pattern, asset_name):
+                    download_url = asset.get('browser_download_url')
+                    matched_asset_name = asset_name
+                    self.log_message(f"Found smart match: {asset_name}", "info")
                     break
                     
             if not download_url:
-                self.log_message(f"Asset '{asset_name}' not found in latest release", "error")
+                # List available assets for troubleshooting
+                available = [asset.get('name') for asset in assets]
+                self.log_message(f"Asset pattern '{asset_pattern}' not found", "error")
+                self.log_message(f"Available assets: {', '.join(available[:5])}{'...' if len(available) > 5 else ''}", "info")
                 return False
                 
             # Download the file
-            return self.download_and_install(download_url, asset_name, app)
+            return self.download_and_install(download_url, matched_asset_name, app)
             
         except Exception as e:
             self.log_message(f"GitHub download error: {str(e)}", "error")
             return False
+    
+    def _matches_asset_pattern(self, pattern, asset_name):
+        """Smart pattern matching for GitHub assets"""
+        import re
+        
+        # Normalize both strings
+        pattern_clean = pattern.lower().replace('_', '').replace('-', '').replace(' ', '')
+        asset_clean = asset_name.lower().replace('_', '').replace('-', '').replace(' ', '')
+        
+        # Check if the core name matches (ignoring separators)
+        if pattern_clean in asset_clean:
+            return True
+            
+        # Extract file extensions and base names
+        pattern_base = pattern.lower().split('.')[0]
+        asset_base = asset_name.lower().split('.')[0]
+        
+        # Check for common installer patterns
+        installer_patterns = ['setup', 'install', 'installer']
+        for installer_word in installer_patterns:
+            if installer_word in pattern_base and installer_word in asset_base:
+                # Both contain installer words, check if app name matches
+                pattern_app = pattern_base.replace(installer_word, '').strip('_-')
+                asset_app = asset_base.replace(installer_word, '').strip('_-')
+                if pattern_app and asset_app and (pattern_app in asset_app or asset_app in pattern_app):
+                    return True
+                    
+        # Check for version number variations (e.g., "app.exe" vs "app-v1.2.exe")
+        version_regex = r'[-._]v?\d+[\d\.-]*'
+        pattern_no_version = re.sub(version_regex, '', pattern.lower())
+        asset_no_version = re.sub(version_regex, '', asset_name.lower())
+        
+        if pattern_no_version == asset_no_version:
+            return True
+            
+        return False
             
     def install_via_direct_download(self, app):
         """Install application via direct download"""
