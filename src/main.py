@@ -57,15 +57,15 @@ class ExilesInstaller:
             'error': '#B01515'            # Exiles red for errors
         }
         
-        # Exiles brand fonts
+        # Exiles brand fonts with system fallbacks
         self.fonts = {
-            'heading': ('Russo One', 24, 'bold'),      # Primary font for titles
-            'subheading': ('Russo One', 16, 'bold'),   # Secondary headings
-            'ui_large': ('Orbitron', 14, 'bold'),      # UI elements large
-            'ui_medium': ('Orbitron', 12, 'normal'),   # UI elements medium
-            'ui_small': ('Orbitron', 10, 'normal'),    # UI elements small
-            'body': ('Segoe UI', 11, 'normal'),        # Body text
-            'monospace': ('Consolas', 10, 'normal')    # Log/console text
+            'heading': ('Arial Black', 22, 'bold'),    # Primary font for titles
+            'subheading': ('Arial', 16, 'bold'),       # Secondary headings
+            'ui_large': ('Arial', 14, 'bold'),         # UI elements large
+            'ui_medium': ('Arial', 12, 'normal'),      # UI elements medium
+            'ui_small': ('Arial', 10, 'normal'),       # UI elements small
+            'body': ('Arial', 11, 'normal'),           # Body text
+            'monospace': ('Courier New', 10, 'normal') # Log/console text
         }
         
         # Load apps configuration
@@ -903,6 +903,7 @@ class ExilesInstaller:
                 system = platform.system()
                 if system == "Windows":
                     try:
+                        import os
                         if hasattr(os, 'startfile'):
                             os.startfile(str(log_path))
                         else:
