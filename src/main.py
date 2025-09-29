@@ -943,7 +943,7 @@ class ExilesInstaller:
     def create_visual_control_dock(self, parent):
         """Create a visual control dock"""
         # Control dock container  
-        dock = tk.Frame(parent, bg=self.colors['accent_primary'], height=100)
+        dock = tk.Frame(parent, bg=self.colors['bg_secondary'], height=100)
         dock.pack(side='bottom', fill='x', padx=20, pady=(10, 20))
         dock.pack_propagate(False)
         
