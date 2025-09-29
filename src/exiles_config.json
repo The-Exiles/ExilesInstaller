@@ -10,5 +10,5 @@
   "update_server": "https://downloads.exiles.one",
   "log_level": "INFO",
   "debug_mode": false,
-  "dry_run": false
+  "dry_run": true
 }
