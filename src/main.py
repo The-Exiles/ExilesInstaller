@@ -148,8 +148,17 @@ class ExilesInstaller:
                 for game_id, game_data in games.items()]
     
     def get_current_game_apps(self):
-        """Get apps for the currently selected game"""
-        return self.apps_config.get("games", {}).get(self.current_game, {}).get("apps", [])
+        """Get apps for the currently selected game (including multi-game apps)"""
+        all_apps = self.apps_config.get("apps", [])
+        current_game_apps = []
+        
+        for app in all_apps:
+            # Check if current game is in this app's supported games list
+            app_games = app.get("games", [])
+            if self.current_game in app_games:
+                current_game_apps.append(app)
+        
+        return current_game_apps
     
     def get_current_game_info(self):
         """Get information about the currently selected game"""
