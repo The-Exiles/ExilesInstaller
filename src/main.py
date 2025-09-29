@@ -571,6 +571,25 @@ class ExilesInstaller:
         self.filter_type_frame = filter_type_frame
         self.create_filter_dropdown()
         
+        # Category filter dropdown
+        category_frame = tk.Frame(filter_content, bg=self.colors['bg_panel'])
+        category_frame.pack(fill='x', pady=(10, 0))
+        
+        category_label = tk.Label(
+            category_frame,
+            text="Category:",
+            font=('Segoe UI', 10),
+            fg=self.colors['text_muted'],
+            bg=self.colors['bg_panel']
+        )
+        category_label.pack(side='left', padx=(0, 10))
+        
+        self.filter_category_var = tk.StringVar(value="All Categories")
+        
+        # Store reference for dynamic updates
+        self.category_frame = category_frame
+        self.create_category_dropdown()
+        
         # Modern app cards container
         apps_container = tk.Frame(list_container, bg=self.colors['bg_secondary'])
         apps_container.pack(fill='both', expand=True)
@@ -667,6 +686,7 @@ class ExilesInstaller:
             # Apply current filters
             filter_text = self.filter_var.get().lower() if hasattr(self, 'filter_var') else ""
             filter_type = self.filter_type_var.get() if hasattr(self, 'filter_type_var') else "All"
+            filter_category = self.filter_category_var.get() if hasattr(self, 'filter_category_var') else "All Categories"
             
             for app in apps:
                 app_name = app.get('name', 'Unknown')
@@ -681,7 +701,7 @@ class ExilesInstaller:
                     continue
                 
                 # Apply type filter
-                if filter_type != "All" and filter_type != "─────":  # Skip separator
+                if filter_type != "All":
                     # Standard filters
                     if filter_type == "Essential" and is_optional:
                         continue
@@ -696,11 +716,12 @@ class ExilesInstaller:
                         continue
                     elif filter_type == "Web Tools" and install_type != "web":
                         continue
-                    # Category filters (any filter not matching above is assumed to be a category)
-                    elif filter_type not in ["Essential", "Optional", "GitHub", "Direct Download", "Windows Package", "Web Tools"]:
-                        app_category = app.get('category', 'General')
-                        if filter_type != app_category:
-                            continue
+                
+                # Apply category filter (separate dropdown)
+                if filter_category != "All Categories":
+                    app_category = app.get('category', 'General')
+                    if filter_category != app_category:
+                        continue
                 
                 self.create_app_card(app, app_icons)
                 
@@ -1265,27 +1286,18 @@ class ExilesInstaller:
             logger.error(f"Error changing filter: {e}")
     
     def create_filter_dropdown(self):
-        """Create or recreate the filter dropdown with current game categories"""
+        """Create or recreate the filter dropdown (type/status filters only)"""
         try:
             # Remove existing dropdown if it exists
             if hasattr(self, 'type_dropdown'):
                 self.type_dropdown.destroy()
             
-            # Get categories from current game's apps
-            apps = self.get_current_game_apps()
-            categories = set()
-            for app in apps:
-                category = app.get('category', 'General')
-                if category:
-                    categories.add(category)
-            
-            # Build filter options
+            # Build filter options (no categories here anymore - they have their own dropdown)
             base_options = ["All", "Essential", "Optional"]
             install_type_options = ["GitHub", "Direct Download", "Windows Package", "Web Tools"]
-            category_options = sorted(list(categories))
             
-            # Combine all options with separators
-            type_options = base_options + ["─────"] + category_options + ["─────"] + install_type_options
+            # Combine all options
+            type_options = base_options + install_type_options
             
             # Create new dropdown
             self.type_dropdown = tk.OptionMenu(
@@ -1307,6 +1319,51 @@ class ExilesInstaller:
         except Exception as e:
             logger.error(f"Error creating filter dropdown: {e}")
 
+    def create_category_dropdown(self):
+        """Create or recreate the category dropdown with current game categories"""
+        try:
+            # Remove existing dropdown if it exists
+            if hasattr(self, 'category_dropdown'):
+                self.category_dropdown.destroy()
+            
+            # Get categories from current game's apps
+            apps = self.get_current_game_apps()
+            categories = set()
+            for app in apps:
+                category = app.get('category', 'General')
+                if category:
+                    categories.add(category)
+            
+            # Build category options
+            category_options = ["All Categories"] + sorted(list(categories))
+            
+            # Create new dropdown
+            self.category_dropdown = tk.OptionMenu(
+                self.category_frame,
+                self.filter_category_var,
+                *category_options,
+                command=self.on_category_change
+            )
+            self.category_dropdown.configure(
+                bg=self.colors['bg_primary'],
+                fg=self.colors['text_primary'],
+                activebackground=self.colors['bg_hover'],
+                activeforeground=self.colors['text_primary'],
+                bd=0,
+                relief='flat'
+            )
+            self.category_dropdown.pack(side='left')
+            
+        except Exception as e:
+            logger.error(f"Error creating category dropdown: {e}")
+
+    def on_category_change(self, selected_category):
+        """Handle category filter changes"""
+        try:
+            self.populate_app_cards()
+        except Exception as e:
+            logger.error(f"Error changing category filter: {e}")
+
     def on_game_change(self, selected_game_name):
         """Handle game selection changes"""
         try:
@@ -1323,9 +1380,11 @@ class ExilesInstaller:
             # Log the game change
             self.log_message(f"◆ Switched to {selected_game_name}", "info")
             
-            # Update filter dropdown with new game's categories
-            self.filter_type_var.set("All")  # Reset filter
+            # Update both filter dropdowns with new game's categories
+            self.filter_type_var.set("All")  # Reset type filter
+            self.filter_category_var.set("All Categories")  # Reset category filter
             self.create_filter_dropdown()
+            self.create_category_dropdown()
             
             # Refresh the interface
             self.populate_app_cards()
