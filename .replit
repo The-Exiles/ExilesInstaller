@@ -15,15 +15,15 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Exiles Installer"
+args = "Test Suite"
 
 [[workflows.workflow]]
-name = "Exiles Installer"
+name = "Test Suite"
 author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "python main.py"
+args = "cd build && python test_installer.py"
 
 [workflows.workflow.metadata]
 outputType = "console"

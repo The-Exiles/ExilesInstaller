@@ -10,7 +10,7 @@ from pathlib import Path
 def test_apps_config():
     """Test that apps.json is valid and contains required data"""
     try:
-        with open('apps.json', 'r') as f:
+        with open('../src/apps.json', 'r') as f:
             config = json.load(f)
         
         print("✓ apps.json is valid JSON")
@@ -60,16 +60,16 @@ def test_core_functionality():
     """Test core installer functionality without GUI"""
     try:
         # Import the main class
-        sys.path.insert(0, '.')
+        sys.path.insert(0, '../src')
         
         # Test that the class definition is syntactically correct
-        with open('main.py', 'r') as f:
+        with open('../src/main.py', 'r') as f:
             code = compile(f.read(), 'main.py', 'exec')
         
         print("✓ main.py compiles successfully")
         
         # Test apps.json loading
-        with open('apps.json', 'r') as f:
+        with open('../src/apps.json', 'r') as f:
             apps_data = json.load(f)
         
         # Count different install types
