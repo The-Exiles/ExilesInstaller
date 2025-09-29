@@ -130,7 +130,7 @@ class ExilesInstaller:
         
         # Main content with visual cards
         content_frame = tk.Frame(main_frame, bg=self.colors['bg_primary'])
-        content_frame.pack(fill='both', expand=True, padx=30, pady=20)
+        content_frame.pack(side='top', fill='both', expand=True, padx=30, pady=20)
         
         # Create visual dashboard layout
         self.create_visual_dashboard(content_frame)
@@ -939,7 +939,7 @@ class ExilesInstaller:
         """Create a visual control dock"""
         # Control dock container
         dock = tk.Frame(parent, bg=self.colors['bg_secondary'], height=120)
-        dock.pack(fill='x', pady=(20, 20), padx=20)
+        dock.pack(side='bottom', fill='x', padx=20, pady=(0, 20))
         dock.pack_propagate(False)
         
         # Dock content
