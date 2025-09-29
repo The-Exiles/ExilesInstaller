@@ -125,13 +125,13 @@ class ExilesInstaller:
             'current_version': '1.0.0'
         }
         
-        self.setup_ui()
-        
         # Initialize privilege handling
         self.is_admin = self.check_admin_privileges()
         
-        # Initialize status tracking
+        # Initialize status tracking (before UI setup)
         self.app_statuses = {}
+        
+        self.setup_ui()
         
         # Defer update checking until after UI is shown to improve startup speed
         if self.settings.get('auto_check_updates', True):
@@ -1171,24 +1171,86 @@ class ExilesInstaller:
         
         # Right section with status indicator
         right_section = tk.Frame(card_content, bg=self.colors['bg_accent'])
-        right_section.pack(side='right', fill='y')
+        right_section.pack(side='right', fill='y', padx=(10, 0))
         
-        # Status indicator
-        status_indicator = tk.Label(
-            right_section,
-            text="●",
-            font=('Segoe UI', 16),
-            fg=self.colors['success'] if optional else self.colors['warning'],
+        # Get installation status for this app
+        app_status = self.app_statuses.get(app_id, {})
+        status = app_status.get('status', 'unknown')
+        installed_version = app_status.get('installed_version', None)
+        remote_version = app_status.get('remote_version', None)
+        
+        # Status indicator badge
+        status_frame = tk.Frame(right_section, bg=self.colors['bg_accent'])
+        status_frame.pack(pady=(5, 0))
+        
+        # Create status badge based on installation status
+        if status == 'installed':
+            status_icon = "✅"
+            status_text = "INSTALLED"
+            status_color = self.colors['success']
+            version_text = f"v{installed_version}" if installed_version and installed_version != "Unknown" else ""
+        elif status == 'update_available':
+            status_icon = "🔄"
+            status_text = "UPDATE"
+            status_color = self.colors['warning']
+            if installed_version and remote_version:
+                version_text = f"v{installed_version} → {remote_version}"
+            else:
+                version_text = "Available"
+        elif status == 'not_installed':
+            status_icon = "❌"
+            status_text = "NOT INSTALLED"
+            status_color = self.colors['text_muted']
+            version_text = ""
+        else:  # unknown or checking
+            status_icon = "⚪"
+            status_text = "CHECKING..."
+            status_color = self.colors['info']
+            version_text = ""
+        
+        # Status icon
+        status_icon_label = tk.Label(
+            status_frame,
+            text=status_icon,
+            font=('Segoe UI Emoji', 16),
+            fg=status_color,
             bg=self.colors['bg_accent']
         )
-        status_indicator.pack(pady=(10, 0))
+        status_icon_label.pack()
         
-        # Store card reference
+        # Status text badge
+        status_badge = tk.Label(
+            status_frame,
+            text=status_text,
+            font=('Segoe UI', 7, 'bold'),
+            fg=self.colors['text_primary'],
+            bg=status_color,
+            padx=6,
+            pady=1
+        )
+        status_badge.pack(pady=(2, 0))
+        
+        # Version information (if available)
+        if version_text:
+            version_label = tk.Label(
+                status_frame,
+                text=version_text,
+                font=('Segoe UI', 7),
+                fg=self.colors['text_muted'],
+                bg=self.colors['bg_accent']
+            )
+            version_label.pack(pady=(1, 0))
+        
+        # Store card reference with status components
         self.app_cards[app_id] = {
             'frame': card_frame,
             'checkbox': checkbox,
             'var': var,
-            'app': app
+            'app': app,
+            'status_frame': status_frame,
+            'status_icon': status_icon_label,
+            'status_badge': status_badge,
+            'version_label': version_label if version_text else None
         }
         
         # Hover effects for the entire card
@@ -1203,9 +1265,13 @@ class ExilesInstaller:
             icon_label.configure(bg=self.colors['bg_hover'])
             name_label.configure(bg=self.colors['bg_hover'])
             desc_label.configure(bg=self.colors['bg_hover'])
-            status_indicator.configure(bg=self.colors['bg_hover'])
             category_badge.configure(bg=self.colors['bg_hover'])
             game_info_label.configure(bg=self.colors['bg_hover'])
+            # Update status components
+            status_frame.configure(bg=self.colors['bg_hover'])
+            status_icon_label.configure(bg=self.colors['bg_hover'])
+            if version_text:
+                version_label.configure(bg=self.colors['bg_hover'])
             if required_badge:
                 required_badge.configure(bg=self.colors['bg_hover'])
                 
@@ -1220,9 +1286,13 @@ class ExilesInstaller:
             icon_label.configure(bg=self.colors['bg_accent'])
             name_label.configure(bg=self.colors['bg_accent'])
             desc_label.configure(bg=self.colors['bg_accent'])
-            status_indicator.configure(bg=self.colors['bg_accent'])
             category_badge.configure(bg=self.get_category_color(category))  # Keep original category color
             game_info_label.configure(bg=self.colors['bg_accent'])
+            # Update status components
+            status_frame.configure(bg=self.colors['bg_accent'])
+            status_icon_label.configure(bg=self.colors['bg_accent'])
+            if version_text:
+                version_label.configure(bg=self.colors['bg_accent'])
             if required_badge:
                 required_badge.configure(bg=self.colors['warning'])  # Keep original required color
         
@@ -1233,12 +1303,14 @@ class ExilesInstaller:
         
         # Bind events to all card elements
         widgets_to_bind = [card_frame, card_content, left_section, center_section, right_section, 
-                          name_frame, icon_label, name_label, desc_label, status_indicator, 
-                          category_badge, game_info_label]
+                          name_frame, icon_label, name_label, desc_label, 
+                          category_badge, game_info_label, status_frame, status_icon_label, status_badge]
         
-        # Add required badge to bind list if it exists
+        # Add required badge and version label to bind list if they exist
         if required_badge:
             widgets_to_bind.append(required_badge)
+        if version_text:
+            widgets_to_bind.append(version_label)
         
         for widget in widgets_to_bind:
             widget.bind("<Enter>", on_enter)
@@ -3574,16 +3646,63 @@ class ExilesInstaller:
     
     def refresh_app_status_display(self):
         """Refresh the app display with updated status information"""
-        # This will be called to update the UI after status checking
-        # For now, just log that statuses were updated
-        apps_checked = len(self.app_statuses)
-        installed_count = sum(1 for status in self.app_statuses.values() if status['status'] == 'installed')
-        update_count = sum(1 for status in self.app_statuses.values() if status['status'] == 'update_available')
+        try:
+            apps_checked = len(self.app_statuses)
+            installed_count = sum(1 for status in self.app_statuses.values() if status['status'] == 'installed')
+            update_count = sum(1 for status in self.app_statuses.values() if status['status'] == 'update_available')
+            
+            self.log_message(f"📊 Status: {installed_count} installed, {update_count} updates available ({apps_checked} total)", "info")
+            
+            # Update the UI elements with current status information
+            for app_id, app_status in self.app_statuses.items():
+                if app_id in self.app_cards:
+                    card_data = self.app_cards[app_id]
+                    status = app_status.get('status', 'unknown')
+                    installed_version = app_status.get('installed_version', None)
+                    remote_version = app_status.get('remote_version', None)
+                    
+                    # Update status display based on current status
+                    if status == 'installed':
+                        status_icon = "✅"
+                        status_text = "INSTALLED"
+                        status_color = self.colors['success']
+                        version_text = f"v{installed_version}" if installed_version and installed_version != "Unknown" else ""
+                    elif status == 'update_available':
+                        status_icon = "🔄"
+                        status_text = "UPDATE"
+                        status_color = self.colors['warning']
+                        if installed_version and remote_version:
+                            version_text = f"v{installed_version} → {remote_version}"
+                        else:
+                            version_text = "Available"
+                    elif status == 'not_installed':
+                        status_icon = "❌"
+                        status_text = "NOT INSTALLED"
+                        status_color = self.colors['text_muted']
+                        version_text = ""
+                    else:  # unknown
+                        status_icon = "⚪"
+                        status_text = "UNKNOWN"
+                        status_color = self.colors['info']
+                        version_text = ""
+                    
+                    # Update the status components if they exist
+                    if 'status_icon' in card_data and card_data['status_icon'].winfo_exists():
+                        card_data['status_icon'].configure(text=status_icon, fg=status_color)
+                    
+                    if 'status_badge' in card_data and card_data['status_badge'].winfo_exists():
+                        card_data['status_badge'].configure(text=status_text, bg=status_color)
+                    
+                    if 'version_label' in card_data and card_data['version_label']:
+                        if card_data['version_label'].winfo_exists():
+                            if version_text:
+                                card_data['version_label'].configure(text=version_text)
+                                card_data['version_label'].pack(pady=(1, 0))
+                            else:
+                                card_data['version_label'].pack_forget()
         
-        self.log_message(f"📊 Status: {installed_count} installed, {update_count} updates available ({apps_checked} total)", "info")
-        
-        # TODO: Update the actual UI elements with status indicators
-        # This will be implemented when we enhance the UI display
+        except Exception as e:
+            logger.error(f"Error refreshing app status display: {e}")
     
     def load_current_settings(self):
         """Load current settings into dialog variables"""
