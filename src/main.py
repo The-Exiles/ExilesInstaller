@@ -500,13 +500,13 @@ class ExilesInstaller:
         
     def create_card_header(self, parent, title, subtitle):
         """Create a visually rich card header"""
-        header_frame = tk.Frame(parent, bg=self.colors['bg_accent'], height=80)
+        header_frame = tk.Frame(parent, bg=self.colors['bg_accent'], height=95)
         header_frame.pack(fill='x')
         header_frame.pack_propagate(False)
         
         # Header content
         header_content = tk.Frame(header_frame, bg=self.colors['bg_accent'])
-        header_content.pack(expand=True, fill='both', padx=25, pady=15)
+        header_content.pack(expand=True, fill='both', padx=25, pady=12)
         
         # Title with icon
         title_frame = tk.Frame(header_content, bg=self.colors['bg_accent'])
@@ -529,7 +529,7 @@ class ExilesInstaller:
             fg=self.colors['text_muted'],
             bg=self.colors['bg_accent']
         )
-        subtitle_label.pack(anchor='w', pady=(5, 0))
+        subtitle_label.pack(anchor='w', pady=(3, 0))
         
         # Visual separator
         separator = tk.Frame(parent, bg=self.colors['accent_primary'], height=3)
@@ -802,11 +802,12 @@ class ExilesInstaller:
         )
         checkbox.pack(side='left', padx=(0, 15))
         
-        # App icon
+        # App icon with color
         icon_label = tk.Label(
             left_section,
             text=icon,
             font=('Segoe UI Emoji', 24),
+            fg=self.colors['info'],  # Use cyan color for better visibility
             bg=self.colors['bg_accent']
         )
         icon_label.pack(side='left', padx=(0, 20))
