@@ -37,7 +37,7 @@ class ExilesInstaller:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Exiles Installer - Elite Dangerous Ecosystem")
-        self.root.geometry("1280x900")
+        self.root.geometry("1280x1000")
         self.root.configure(bg='#0a0e13')
         self.root.minsize(1000, 700)
         
@@ -943,8 +943,8 @@ class ExilesInstaller:
     def create_visual_control_dock(self, parent):
         """Create a visual control dock"""
         # Control dock container  
-        dock = tk.Frame(parent, bg=self.colors['bg_secondary'], height=100)
-        dock.pack(side='bottom', fill='x', padx=20, pady=(5, 15))
+        dock = tk.Frame(parent, bg=self.colors['accent_primary'], height=100)
+        dock.pack(side='bottom', fill='x', padx=20, pady=(10, 20))
         dock.pack_propagate(False)
         
         # Dock content
