@@ -115,15 +115,11 @@ class ExilesInstaller:
         self.create_modern_control_panel(main_frame)
         
     def create_modern_header(self, parent):
-        """Create the header with modern spaceship styling"""
-        # Outer header container with border effect
-        header_outer = tk.Frame(parent, bg=self.colors['accent_primary'], height=120)
-        header_outer.pack(fill='x', pady=(0, 15))
-        header_outer.pack_propagate(False)
-        
-        # Inner header with gradient-like effect
-        header_frame = tk.Frame(header_outer, bg=self.colors['bg_secondary'])
-        header_frame.pack(fill='both', expand=True, padx=2, pady=2)
+        """Create the header with clean spaceship styling"""
+        # Clean header container
+        header_frame = tk.Frame(parent, bg=self.colors['bg_secondary'], height=100)
+        header_frame.pack(fill='x', pady=(0, 15))
+        header_frame.pack_propagate(False)
         
         # Title container with better spacing
         title_container = tk.Frame(header_frame, bg=self.colors['bg_secondary'])
@@ -166,12 +162,9 @@ class ExilesInstaller:
         
     def create_modern_app_selection_panel(self, parent):
         """Create the modern application selection panel"""
-        # Left panel with border effect
-        left_outer = tk.Frame(parent, bg=self.colors['accent_secondary'], width=520)
-        left_outer.pack(side='left', fill='both', expand=True, padx=(0, 8))
-        
-        left_frame = tk.Frame(left_outer, bg=self.colors['bg_panel'])
-        left_frame.pack(fill='both', expand=True, padx=1, pady=1)
+        # Clean left panel
+        left_frame = tk.Frame(parent, bg=self.colors['bg_panel'], width=500)
+        left_frame.pack(side='left', fill='both', expand=True, padx=(0, 10))
         
         # Panel header with modern styling
         header_frame = tk.Frame(left_frame, bg=self.colors['bg_secondary'], height=45)
@@ -240,12 +233,9 @@ class ExilesInstaller:
         
     def create_modern_progress_panel(self, parent):
         """Create the modern installation progress panel"""
-        # Right panel with border effect
-        right_outer = tk.Frame(parent, bg=self.colors['accent_primary'], width=520)
-        right_outer.pack(side='right', fill='both', expand=True, padx=(8, 0))
-        
-        right_frame = tk.Frame(right_outer, bg=self.colors['bg_panel'])
-        right_frame.pack(fill='both', expand=True, padx=1, pady=1)
+        # Clean right panel
+        right_frame = tk.Frame(parent, bg=self.colors['bg_panel'], width=500)
+        right_frame.pack(side='right', fill='both', expand=True, padx=(10, 0))
         
         # Panel header with modern styling
         header_frame = tk.Frame(right_frame, bg=self.colors['bg_secondary'], height=45)
@@ -301,24 +291,14 @@ class ExilesInstaller:
         
     def create_modern_control_panel(self, parent):
         """Create the modern bottom control panel"""
-        # Control panel with border effect
-        control_outer = tk.Frame(parent, bg=self.colors['accent_gold'], height=85)
-        control_outer.pack(fill='x', pady=(15, 0))
-        control_outer.pack_propagate(False)
+        # Clean control panel
+        control_frame = tk.Frame(parent, bg=self.colors['bg_secondary'], height=80)
+        control_frame.pack(fill='x', pady=(20, 0))
+        control_frame.pack_propagate(False)
         
-        control_frame = tk.Frame(control_outer, bg=self.colors['bg_secondary'])
-        control_frame.pack(fill='both', expand=True, padx=2, pady=2)
-        
-        # Modern action buttons container
-        buttons_container = tk.Frame(control_frame, bg=self.colors['bg_secondary'])
-        buttons_container.pack(fill='both', expand=True, padx=15, pady=10)
-        
-        # Main install button with modern styling
-        button_frame = tk.Frame(buttons_container, bg=self.colors['accent_primary'])
-        button_frame.pack(side='left')
-        
+        # Clean install button
         self.install_button = tk.Button(
-            button_frame,
+            control_frame,
             text="◤ EXECUTE DEPLOYMENT ◥",
             font=self.fonts['ui_large'],
             bg=self.colors['accent_primary'],
@@ -332,7 +312,7 @@ class ExilesInstaller:
             pady=12,
             padx=20
         )
-        self.install_button.pack(padx=2, pady=2)
+        self.install_button.pack(side='left', padx=20, pady=20)
         
         # Additional controls
         tk.Button(
