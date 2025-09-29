@@ -37,35 +37,43 @@ class ExilesInstaller:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Exiles Installer - Elite Dangerous Ecosystem")
-        self.root.geometry("1200x800")
-        self.root.configure(bg='#0b0f14')
+        self.root.geometry("1280x900")
+        self.root.configure(bg='#0a0e13')
+        self.root.minsize(1000, 700)
         
-        # Exiles brand color scheme
+        # Modern Exiles brand color scheme
         self.colors = {
-            'bg_primary': '#0b0f14',      # HUD background dark
-            'bg_secondary': '#0f1620',    # HUD background slightly lighter
-            'bg_panel': '#1a1f2a',        # Medium dark for cards/panels
-            'accent_primary': '#B01515',  # Exiles Red - primary accent
-            'accent_secondary': '#17a2b8', # Cyan/teal for highlights
-            'accent_gold': '#FFD700',     # Golden yellow for special content
-            'accent_secondary': '#5bc0de',     # Light blue for exploration
-            'text_primary': '#ffffff',    # White text
-            'text_secondary': '#cccccc',  # Light grey text
-            'text_muted': '#888888',      # Muted grey text
-            'success': '#28A745',         # Green for success messages
-            'warning': '#FFD700',         # Golden yellow for warnings
-            'error': '#B01515'            # Exiles red for errors
+            'bg_primary': '#0a0e13',       # Deep space black
+            'bg_secondary': '#12181f',     # Card backgrounds
+            'bg_panel': '#1a2028',         # Input/widget backgrounds
+            'bg_accent': '#232b34',        # Subtle accent backgrounds
+            'bg_hover': '#2a3441',         # Hover states
+            'accent_primary': '#e53e3e',   # Modern red (more vibrant)
+            'accent_secondary': '#c53030', # Darker red accent
+            'accent_tertiary': '#9c1c1c',  # Deep red for hover states
+            'accent_glow': '#ff6b6b',      # Bright red for emphasis
+            'text_primary': '#f7fafc',     # Pure white text
+            'text_secondary': '#e2e8f0',   # Light gray text
+            'text_muted': '#a0aec0',       # Muted text
+            'border': '#2d3748',           # Subtle borders
+            'border_accent': '#4a5568',    # Emphasized borders
+            'success': '#38a169',          # Modern green
+            'warning': '#ed8936',          # Modern orange
+            'error': '#e53e3e',            # Modern red
+            'info': '#3182ce'              # Modern blue
         }
         
-        # Exiles brand fonts with system fallbacks
+        # Modern typography system
         self.fonts = {
-            'heading': ('Arial Black', 22, 'bold'),    # Primary font for titles
-            'subheading': ('Arial', 16, 'bold'),       # Secondary headings
-            'ui_large': ('Arial', 14, 'bold'),         # UI elements large
-            'ui_medium': ('Arial', 12, 'normal'),      # UI elements medium
-            'ui_small': ('Arial', 10, 'normal'),       # UI elements small
-            'body': ('Arial', 11, 'normal'),           # Body text
-            'monospace': ('Courier New', 10, 'normal') # Log/console text
+            'heading': ('Segoe UI', 24, 'bold'),       # Large headings
+            'subheading': ('Segoe UI', 18, 'bold'),    # Section headings  
+            'ui_large': ('Segoe UI', 14, 'bold'),      # Large UI elements
+            'ui_medium': ('Segoe UI', 12, 'normal'),   # Standard UI elements
+            'ui_small': ('Segoe UI', 10, 'normal'),    # Small UI elements
+            'body': ('Segoe UI', 11, 'normal'),        # Body text
+            'monospace': ('Consolas', 10, 'normal'),   # Code/log text
+            'button': ('Segoe UI', 12, 'bold'),        # Button text
+            'caption': ('Segoe UI', 9, 'normal')       # Small captions
         }
         
         # Load apps configuration
@@ -131,50 +139,39 @@ class ExilesInstaller:
         self.create_modern_control_panel(main_frame)
         
     def create_modern_header(self, parent):
-        """Create the header with clean spaceship styling"""
-        # Clean header container
-        header_frame = tk.Frame(parent, bg=self.colors['bg_secondary'], height=100)
-        header_frame.pack(fill='x', pady=(0, 15))
+        """Create a sleek modern header"""
+        # Header container with gradient-like effect
+        header_frame = tk.Frame(parent, bg=self.colors['bg_secondary'], height=120)
+        header_frame.pack(fill='x', pady=(0, 25))
         header_frame.pack_propagate(False)
         
-        # Title container with better spacing
-        title_container = tk.Frame(header_frame, bg=self.colors['bg_secondary'])
-        title_container.pack(fill='both', expand=True)
+        # Title section with modern layout
+        title_section = tk.Frame(header_frame, bg=self.colors['bg_secondary'])
+        title_section.pack(expand=True, fill='both', padx=30, pady=20)
         
-        # Main title with enhanced styling
+        # Modern title with glowing effect
         title_label = tk.Label(
-            title_container,
-            text="◤ EXILES INSTALLER ◥",
+            title_section,
+            text="EXILES INSTALLER",
             font=self.fonts['heading'],
-            fg=self.colors['accent_primary'],
+            fg=self.colors['accent_glow'],
             bg=self.colors['bg_secondary']
         )
-        title_label.pack(pady=(15, 5))
+        title_label.pack(pady=(0, 8))
         
-        # Subtitle with better typography
+        # Modern subtitle with better typography
         subtitle_label = tk.Label(
-            title_container,
-            text="ELITE DANGEROUS ECOSYSTEM DEPLOYMENT SYSTEM",
+            title_section,
+            text="Elite Dangerous Ecosystem • Modern Deployment System",
             font=self.fonts['ui_medium'],
-            fg=self.colors['accent_secondary'],
+            fg=self.colors['text_secondary'],
             bg=self.colors['bg_secondary']
         )
-        subtitle_label.pack(pady=(0, 5))
+        subtitle_label.pack()
         
-        # Status bar with modern info display
-        status_frame = tk.Frame(title_container, bg=self.colors['bg_panel'])
-        status_frame.pack(fill='x', padx=20, pady=(5, 10))
-        
-        meta = self.apps_config.get('metadata', {})
-        status_text = f"◆ DATABASE: {meta.get('updated', 'UNKNOWN')} ◆ MAINTAINER: {meta.get('maintainer', 'UNKNOWN')} ◆"
-        status_label = tk.Label(
-            status_frame,
-            text=status_text,
-            font=self.fonts['ui_small'],
-            fg=self.colors['accent_gold'],
-            bg=self.colors['bg_panel']
-        )
-        status_label.pack(pady=5)
+        # Status indicator strip
+        status_strip = tk.Frame(header_frame, bg=self.colors['border_accent'], height=2)
+        status_strip.pack(fill='x', side='bottom')
         
     def create_modern_app_selection_panel(self, parent):
         """Create the modern application selection panel"""
@@ -244,8 +241,99 @@ class ExilesInstaller:
         # Populate apps list
         self.populate_apps_list()
         
-        # Quick selection buttons
-        self.create_quick_selection_buttons(left_frame)
+        # Modern quick selection presets
+        self.create_modern_quick_selection(left_frame)
+    
+    def create_modern_quick_selection(self, parent):
+        """Create modern preset selection buttons"""
+        # Presets card
+        presets_card = tk.Frame(parent, bg=self.colors['bg_secondary'])
+        presets_card.pack(fill='x')
+        
+        # Header
+        header_frame = tk.Frame(presets_card, bg=self.colors['bg_secondary'])
+        header_frame.pack(fill='x', padx=20, pady=(15, 10))
+        
+        preset_title = tk.Label(
+            header_frame,
+            text="Quick Select",
+            font=self.fonts['ui_medium'],
+            fg=self.colors['text_secondary'],
+            bg=self.colors['bg_secondary']
+        )
+        preset_title.pack(anchor='w')
+        
+        # Button container
+        buttons_container = tk.Frame(presets_card, bg=self.colors['bg_secondary'])
+        buttons_container.pack(fill='x', padx=20, pady=(0, 20))
+        
+        presets = [
+            ("Essential", ["EDMC", "EDDI", "VoiceAttack"]),
+            ("Explorer", ["EDMC", "EDDiscovery", "opentrack"]),
+            ("HOTAS", ["JoystickGremlin", "HidHide", "vJoy"]),
+            ("All", "all")
+        ]
+        
+        for i, (name, app_ids) in enumerate(presets):
+            btn = tk.Button(
+                buttons_container,
+                text=name,
+                font=self.fonts['ui_small'],
+                bg=self.colors['bg_accent'],
+                fg=self.colors['text_primary'],
+                activebackground=self.colors['bg_hover'],
+                activeforeground=self.colors['text_primary'],
+                relief='flat',
+                bd=0,
+                pady=8,
+                padx=15,
+                cursor='hand2',
+                command=lambda aids=app_ids: self.apply_preset(aids)
+            )
+            btn.pack(side='left', padx=5, pady=5)
+            
+            # Hover effects
+            def on_enter(e, button=btn):
+                button.configure(bg=self.colors['bg_hover'])
+            def on_leave(e, button=btn):
+                button.configure(bg=self.colors['bg_accent'])
+            
+            btn.bind("<Enter>", on_enter)
+            btn.bind("<Leave>", on_leave)
+    
+    def apply_preset(self, app_ids):
+        """Apply a preset selection"""
+        # Clear current selection
+        self.apps_listbox.selection_clear(0, tk.END)
+        self.selected_apps.clear()
+        
+        if app_ids == "all":
+            # Select all apps
+            for i in range(self.apps_listbox.size()):
+                self.apps_listbox.selection_set(i)
+                # Get app id from the display text
+                display_text = self.apps_listbox.get(i)
+                app_name = display_text.split(' ', 1)[1] if ' ' in display_text else display_text
+                # Find matching app by name
+                for app in self.apps_config.get('apps', []):
+                    if app.get('name') == app_name:
+                        self.selected_apps.add(app.get('id'))
+                        break
+        else:
+            # Select specific apps
+            for i in range(self.apps_listbox.size()):
+                display_text = self.apps_listbox.get(i)
+                app_name = display_text.split(' ', 1)[1] if ' ' in display_text else display_text
+                # Find matching app
+                for app in self.apps_config.get('apps', []):
+                    if app.get('name') == app_name and app.get('id') in app_ids:
+                        self.apps_listbox.selection_set(i)
+                        self.selected_apps.add(app.get('id'))
+                        break
+        
+        # Update status
+        count = len(self.selected_apps)
+        self.status_label.configure(text=f"{count} applications selected for installation")
         
     def create_modern_progress_panel(self, parent):
         """Create the modern installation progress panel"""
