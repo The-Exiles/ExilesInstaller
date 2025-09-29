@@ -90,80 +90,102 @@ class ExilesInstaller:
             return {"metadata": {}, "apps": []}
             
     def setup_ui(self):
-        """Setup the main user interface with spaceship HUD styling"""
-        # Main container
+        """Setup the main user interface with modern spaceship HUD styling"""
+        # Configure window for modern look
+        self.root.configure(bg=self.colors['bg_primary'])
+        
+        # Main container with modern padding
         main_frame = tk.Frame(self.root, bg=self.colors['bg_primary'])
-        main_frame.pack(fill='both', expand=True, padx=20, pady=20)
+        main_frame.pack(fill='both', expand=True, padx=15, pady=15)
         
-        # Header
-        self.create_header(main_frame)
+        # Header with enhanced styling
+        self.create_modern_header(main_frame)
         
-        # Content area with two panels
+        # Content area with enhanced panels
         content_frame = tk.Frame(main_frame, bg=self.colors['bg_primary'])
-        content_frame.pack(fill='both', expand=True, pady=(20, 0))
+        content_frame.pack(fill='both', expand=True, pady=(15, 0))
         
-        # Left panel - App selection
-        self.create_app_selection_panel(content_frame)
+        # Left panel - App selection with modern styling
+        self.create_modern_app_selection_panel(content_frame)
         
-        # Right panel - Installation progress
-        self.create_progress_panel(content_frame)
+        # Right panel - Installation progress with modern styling
+        self.create_modern_progress_panel(content_frame)
         
-        # Bottom control panel
-        self.create_control_panel(main_frame)
+        # Bottom control panel with enhanced styling
+        self.create_modern_control_panel(main_frame)
         
-    def create_header(self, parent):
-        """Create the header with spaceship styling"""
-        header_frame = tk.Frame(parent, bg=self.colors['bg_secondary'], height=100)
-        header_frame.pack(fill='x', pady=(0, 20))
-        header_frame.pack_propagate(False)
+    def create_modern_header(self, parent):
+        """Create the header with modern spaceship styling"""
+        # Outer header container with border effect
+        header_outer = tk.Frame(parent, bg=self.colors['accent_primary'], height=120)
+        header_outer.pack(fill='x', pady=(0, 15))
+        header_outer.pack_propagate(False)
         
-        # Title
+        # Inner header with gradient-like effect
+        header_frame = tk.Frame(header_outer, bg=self.colors['bg_secondary'])
+        header_frame.pack(fill='both', expand=True, padx=2, pady=2)
+        
+        # Title container with better spacing
+        title_container = tk.Frame(header_frame, bg=self.colors['bg_secondary'])
+        title_container.pack(fill='both', expand=True)
+        
+        # Main title with enhanced styling
         title_label = tk.Label(
-            header_frame,
-            text="EXILES INSTALLER",
+            title_container,
+            text="◤ EXILES INSTALLER ◥",
             font=self.fonts['heading'],
             fg=self.colors['accent_primary'],
             bg=self.colors['bg_secondary']
         )
-        title_label.pack(pady=10)
+        title_label.pack(pady=(15, 5))
         
-        # Subtitle
+        # Subtitle with better typography
         subtitle_label = tk.Label(
-            header_frame,
-            text="Elite Dangerous Ecosystem Installation System",
-            font=self.fonts['body'],
-            fg=self.colors['text_secondary'],
-            bg=self.colors['bg_secondary']
-        )
-        subtitle_label.pack()
-        
-        # Version info
-        meta = self.apps_config.get('metadata', {})
-        version_text = f"Database: {meta.get('updated', 'Unknown')} | Maintainer: {meta.get('maintainer', 'Unknown')}"
-        version_label = tk.Label(
-            header_frame,
-            text=version_text,
-            font=('Consolas', 9),
-            fg=self.colors['text_muted'],
-            bg=self.colors['bg_secondary']
-        )
-        version_label.pack()
-        
-    def create_app_selection_panel(self, parent):
-        """Create the application selection panel"""
-        # Left panel frame
-        left_frame = tk.Frame(parent, bg=self.colors['bg_panel'], width=500)
-        left_frame.pack(side='left', fill='both', expand=True, padx=(0, 10))
-        
-        # Panel title
-        title_label = tk.Label(
-            left_frame,
-            text="▼ APPLICATION SELECTION",
-            font=self.fonts['ui_large'],
+            title_container,
+            text="ELITE DANGEROUS ECOSYSTEM DEPLOYMENT SYSTEM",
+            font=self.fonts['ui_medium'],
             fg=self.colors['accent_secondary'],
+            bg=self.colors['bg_secondary']
+        )
+        subtitle_label.pack(pady=(0, 5))
+        
+        # Status bar with modern info display
+        status_frame = tk.Frame(title_container, bg=self.colors['bg_panel'])
+        status_frame.pack(fill='x', padx=20, pady=(5, 10))
+        
+        meta = self.apps_config.get('metadata', {})
+        status_text = f"◆ DATABASE: {meta.get('updated', 'UNKNOWN')} ◆ MAINTAINER: {meta.get('maintainer', 'UNKNOWN')} ◆"
+        status_label = tk.Label(
+            status_frame,
+            text=status_text,
+            font=self.fonts['ui_small'],
+            fg=self.colors['accent_gold'],
             bg=self.colors['bg_panel']
         )
-        title_label.pack(pady=10, anchor='w', padx=10)
+        status_label.pack(pady=5)
+        
+    def create_modern_app_selection_panel(self, parent):
+        """Create the modern application selection panel"""
+        # Left panel with border effect
+        left_outer = tk.Frame(parent, bg=self.colors['accent_secondary'], width=520)
+        left_outer.pack(side='left', fill='both', expand=True, padx=(0, 8))
+        
+        left_frame = tk.Frame(left_outer, bg=self.colors['bg_panel'])
+        left_frame.pack(fill='both', expand=True, padx=1, pady=1)
+        
+        # Panel header with modern styling
+        header_frame = tk.Frame(left_frame, bg=self.colors['bg_secondary'], height=45)
+        header_frame.pack(fill='x', padx=8, pady=(8, 0))
+        header_frame.pack_propagate(False)
+        
+        title_label = tk.Label(
+            header_frame,
+            text="◢ APPLICATION SELECTION MATRIX ◣",
+            font=self.fonts['ui_large'],
+            fg=self.colors['accent_secondary'],
+            bg=self.colors['bg_secondary']
+        )
+        title_label.pack(expand=True)
         
         # Filter controls
         filter_frame = tk.Frame(left_frame, bg=self.colors['bg_panel'])
@@ -216,21 +238,28 @@ class ExilesInstaller:
         # Quick selection buttons
         self.create_quick_selection_buttons(left_frame)
         
-    def create_progress_panel(self, parent):
-        """Create the installation progress panel"""
-        # Right panel frame
-        right_frame = tk.Frame(parent, bg=self.colors['bg_panel'], width=500)
-        right_frame.pack(side='right', fill='both', expand=True, padx=(10, 0))
+    def create_modern_progress_panel(self, parent):
+        """Create the modern installation progress panel"""
+        # Right panel with border effect
+        right_outer = tk.Frame(parent, bg=self.colors['accent_primary'], width=520)
+        right_outer.pack(side='right', fill='both', expand=True, padx=(8, 0))
         
-        # Panel title
+        right_frame = tk.Frame(right_outer, bg=self.colors['bg_panel'])
+        right_frame.pack(fill='both', expand=True, padx=1, pady=1)
+        
+        # Panel header with modern styling
+        header_frame = tk.Frame(right_frame, bg=self.colors['bg_secondary'], height=45)
+        header_frame.pack(fill='x', padx=8, pady=(8, 0))
+        header_frame.pack_propagate(False)
+        
         title_label = tk.Label(
-            right_frame,
-            text="▼ INSTALLATION PROGRESS",
+            header_frame,
+            text="◢ DEPLOYMENT STATUS MONITOR ◣",
             font=self.fonts['ui_large'],
-            fg=self.colors['accent_secondary'],
-            bg=self.colors['bg_panel']
+            fg=self.colors['accent_primary'],
+            bg=self.colors['bg_secondary']
         )
-        title_label.pack(pady=10, anchor='w', padx=10)
+        title_label.pack(expand=True)
         
         # Progress text area
         progress_frame = tk.Frame(right_frame, bg=self.colors['bg_panel'])
@@ -270,26 +299,40 @@ class ExilesInstaller:
         )
         self.status_label.pack(pady=(0, 10))
         
-    def create_control_panel(self, parent):
-        """Create the bottom control panel"""
-        control_frame = tk.Frame(parent, bg=self.colors['bg_secondary'], height=80)
-        control_frame.pack(fill='x', pady=(20, 0))
-        control_frame.pack_propagate(False)
+    def create_modern_control_panel(self, parent):
+        """Create the modern bottom control panel"""
+        # Control panel with border effect
+        control_outer = tk.Frame(parent, bg=self.colors['accent_gold'], height=85)
+        control_outer.pack(fill='x', pady=(15, 0))
+        control_outer.pack_propagate(False)
         
-        # Install button
+        control_frame = tk.Frame(control_outer, bg=self.colors['bg_secondary'])
+        control_frame.pack(fill='both', expand=True, padx=2, pady=2)
+        
+        # Modern action buttons container
+        buttons_container = tk.Frame(control_frame, bg=self.colors['bg_secondary'])
+        buttons_container.pack(fill='both', expand=True, padx=15, pady=10)
+        
+        # Main install button with modern styling
+        button_frame = tk.Frame(buttons_container, bg=self.colors['accent_primary'])
+        button_frame.pack(side='left')
+        
         self.install_button = tk.Button(
-            control_frame,
-            text="► INSTALL SELECTED",
+            button_frame,
+            text="◤ EXECUTE DEPLOYMENT ◥",
             font=self.fonts['ui_large'],
             bg=self.colors['accent_primary'],
-            fg=self.colors['bg_primary'],
+            fg=self.colors['text_primary'],
             activebackground=self.colors['accent_secondary'],
             activeforeground=self.colors['text_primary'],
             command=self.start_installation,
-            padx=20,
-            pady=10
+            cursor='hand2',
+            relief='flat',
+            bd=0,
+            pady=12,
+            padx=20
         )
-        self.install_button.pack(side='left', padx=20, pady=20)
+        self.install_button.pack(padx=2, pady=2)
         
         # Additional controls
         tk.Button(
