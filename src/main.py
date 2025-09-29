@@ -110,9 +110,9 @@ class ExilesInstaller:
         
         self.setup_ui()
         
-        # Check for updates on startup if enabled
+        # Defer update checking until after UI is shown to improve startup speed
         if self.settings.get('auto_check_updates', True):
-            self.check_for_updates_async()
+            self.root.after(2000, self.check_for_updates_async)  # Check after 2 seconds
         
     def load_apps_config(self):
         """Load applications configuration from apps.json with multi-game support"""
