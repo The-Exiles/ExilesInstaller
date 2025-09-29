@@ -435,7 +435,7 @@ class ExilesInstaller:
         separator.pack(fill='x')
         
     def create_visual_app_list(self, parent):
-        """Create a visually enhanced app list"""
+        """Create a modern visual app cards interface"""
         # List container with visual styling
         list_container = tk.Frame(parent, bg=self.colors['bg_secondary'])
         list_container.pack(fill='both', expand=True, padx=20, pady=20)
@@ -475,44 +475,286 @@ class ExilesInstaller:
         search_entry.pack(fill='x', ipady=8)
         search_entry.bind('<KeyRelease>', self.filter_apps)
         
-        # Visual app list with custom styling
-        apps_frame = tk.Frame(list_container, bg=self.colors['bg_secondary'])
-        apps_frame.pack(fill='both', expand=True)
+        # Modern app cards container
+        apps_container = tk.Frame(list_container, bg=self.colors['bg_secondary'])
+        apps_container.pack(fill='both', expand=True)
         
-        # Custom listbox with visual styling
-        self.apps_listbox = tk.Listbox(
-            apps_frame,
-            font=('Segoe UI', 11),
-            bg=self.colors['bg_panel'],
-            fg=self.colors['text_primary'],
-            selectbackground=self.colors['accent_primary'],
-            selectforeground=self.colors['text_primary'],
-            bd=0,
+        # Create scrollable canvas for app cards
+        self.apps_canvas = tk.Canvas(
+            apps_container,
+            bg=self.colors['bg_secondary'],
             highlightthickness=0,
-            relief='flat',
-            selectmode='multiple',
-            activestyle='none'
+            bd=0
         )
         
-        # Scrollbar with visual styling
-        scrollbar = tk.Scrollbar(
-            apps_frame, 
-            orient='vertical', 
-            command=self.apps_listbox.yview,
+        # Scrollbar for app cards
+        apps_scrollbar = tk.Scrollbar(
+            apps_container,
+            orient='vertical',
+            command=self.apps_canvas.yview,
             bg=self.colors['bg_panel'],
             troughcolor=self.colors['bg_secondary'],
             activebackground=self.colors['accent_secondary']
         )
-        self.apps_listbox.configure(yscrollcommand=scrollbar.set)
         
-        self.apps_listbox.pack(side='left', fill='both', expand=True)
-        scrollbar.pack(side='right', fill='y')
+        # Scrollable frame inside canvas
+        self.apps_scroll_frame = tk.Frame(self.apps_canvas, bg=self.colors['bg_secondary'])
         
-        # Bind selection events
-        self.apps_listbox.bind('<<ListboxSelect>>', self.on_app_selection_change)
+        # Configure scrolling
+        self.apps_canvas.configure(yscrollcommand=apps_scrollbar.set)
+        self.apps_canvas_frame = self.apps_canvas.create_window(
+            (0, 0), 
+            window=self.apps_scroll_frame, 
+            anchor='nw'
+        )
         
-        # Populate apps list
-        self.populate_apps_list()
+        # Pack canvas and scrollbar
+        self.apps_canvas.pack(side='left', fill='both', expand=True)
+        apps_scrollbar.pack(side='right', fill='y')
+        
+        # Bind scroll events
+        self.apps_scroll_frame.bind('<Configure>', self.on_apps_frame_configure)
+        self.apps_canvas.bind('<Configure>', self.on_apps_canvas_configure)
+        self.apps_canvas.bind_all('<MouseWheel>', self.on_apps_mousewheel)
+        
+        # Initialize app cards tracking
+        self.app_cards = {}
+        self.app_vars = {}
+        
+        # Populate app cards
+        self.populate_app_cards()
+    
+    def populate_app_cards(self):
+        """Populate the applications with modern visual cards"""
+        try:
+            # Clear existing cards
+            for widget in self.apps_scroll_frame.winfo_children():
+                widget.destroy()
+            
+            self.app_cards.clear()
+            self.app_vars.clear()
+            
+            apps = self.apps_config.get('apps', [])
+            
+            # App icons mapping for visual appeal
+            app_icons = {
+                'EDMC': '📊',
+                'EDDI': '🎤',
+                'VoiceAttack': '🗣️',
+                'EDDiscovery': '🗺️',
+                'JoystickGremlin': '🕹️',
+                'HidHide': '🔧',
+                'vJoy': '🎮',
+                'opentrack': '👁️',
+                'TrackIR': '📹',
+                'Tobii Game Hub': '👀',
+                'VIRPIL VPC': '✈️',
+                'VKB DevCfg': '⚙️',
+                'Thrustmaster TARGET': '🎯',
+                'Logitech Gaming Software': '🖱️'
+            }
+            
+            # Apply current filter
+            filter_text = self.filter_var.get().lower() if hasattr(self, 'filter_var') else ""
+            
+            for app in apps:
+                app_name = app.get('name', 'Unknown')
+                app_description = app.get('description', '')
+                
+                # Apply filter
+                if filter_text and (filter_text not in app_name.lower() and 
+                                   filter_text not in app_description.lower()):
+                    continue
+                
+                self.create_app_card(app, app_icons)
+                
+        except Exception as e:
+            logger.error(f"Error populating app cards: {e}")
+            # Log error but don't show in progress text for initial load
+    
+    def create_app_card(self, app, app_icons):
+        """Create a modern visual card for an application"""
+        app_id = app.get('id', '')
+        name = app.get('name', 'Unknown')
+        description = app.get('description', 'No description available')
+        optional = app.get('optional', True)
+        
+        # Get icon for this app
+        icon = app_icons.get(name, '📦')
+        
+        # Card container with visual styling
+        card_frame = tk.Frame(
+            self.apps_scroll_frame,
+            bg=self.colors['bg_accent'],
+            relief='flat',
+            bd=0
+        )
+        card_frame.pack(fill='x', padx=5, pady=3)
+        
+        # Card content with padding
+        card_content = tk.Frame(card_frame, bg=self.colors['bg_accent'])
+        card_content.pack(fill='x', padx=20, pady=15)
+        
+        # Left section with checkbox and icon
+        left_section = tk.Frame(card_content, bg=self.colors['bg_accent'])
+        left_section.pack(side='left', fill='y')
+        
+        # Checkbox variable - initialize with existing selection state
+        var = tk.BooleanVar()
+        var.set(app_id in self.selected_apps)  # Preserve existing selection
+        self.app_vars[app_id] = var
+        
+        # Custom styled checkbox
+        checkbox = tk.Checkbutton(
+            left_section,
+            variable=var,
+            bg=self.colors['bg_accent'],
+            fg=self.colors['accent_primary'],
+            activebackground=self.colors['bg_accent'],
+            activeforeground=self.colors['accent_glow'],
+            selectcolor=self.colors['bg_primary'],
+            relief='flat',
+            bd=0,
+            highlightthickness=0,
+            command=lambda: self.on_app_selection_change()
+        )
+        checkbox.pack(side='left', padx=(0, 15))
+        
+        # App icon
+        icon_label = tk.Label(
+            left_section,
+            text=icon,
+            font=('Segoe UI Emoji', 24),
+            bg=self.colors['bg_accent']
+        )
+        icon_label.pack(side='left', padx=(0, 20))
+        
+        # Center section with app details
+        center_section = tk.Frame(card_content, bg=self.colors['bg_accent'])
+        center_section.pack(side='left', fill='both', expand=True)
+        
+        # App name with visual styling
+        name_frame = tk.Frame(center_section, bg=self.colors['bg_accent'])
+        name_frame.pack(fill='x', anchor='w')
+        
+        name_label = tk.Label(
+            name_frame,
+            text=name,
+            font=('Segoe UI', 14, 'bold'),
+            fg=self.colors['text_primary'],
+            bg=self.colors['bg_accent'],
+            anchor='w'
+        )
+        name_label.pack(side='left')
+        
+        # Optional/Required badge
+        required_badge = None
+        if not optional:
+            required_badge = tk.Label(
+                name_frame,
+                text="REQUIRED",
+                font=('Segoe UI', 8, 'bold'),
+                fg=self.colors['text_primary'],
+                bg=self.colors['warning'],
+                padx=8,
+                pady=2
+            )
+            required_badge.pack(side='left', padx=(10, 0))
+        
+        # App description
+        desc_label = tk.Label(
+            center_section,
+            text=description,
+            font=('Segoe UI', 10),
+            fg=self.colors['text_muted'],
+            bg=self.colors['bg_accent'],
+            anchor='w',
+            justify='left',
+            wraplength=400
+        )
+        desc_label.pack(fill='x', anchor='w', pady=(5, 0))
+        
+        # Right section with status indicator
+        right_section = tk.Frame(card_content, bg=self.colors['bg_accent'])
+        right_section.pack(side='right', fill='y')
+        
+        # Status indicator
+        status_indicator = tk.Label(
+            right_section,
+            text="●",
+            font=('Segoe UI', 16),
+            fg=self.colors['success'] if optional else self.colors['warning'],
+            bg=self.colors['bg_accent']
+        )
+        status_indicator.pack(pady=(10, 0))
+        
+        # Store card reference
+        self.app_cards[app_id] = {
+            'frame': card_frame,
+            'checkbox': checkbox,
+            'var': var,
+            'app': app
+        }
+        
+        # Hover effects for the entire card
+        def on_enter(event):
+            card_frame.configure(bg=self.colors['bg_hover'])
+            card_content.configure(bg=self.colors['bg_hover'])
+            left_section.configure(bg=self.colors['bg_hover'])
+            center_section.configure(bg=self.colors['bg_hover'])
+            right_section.configure(bg=self.colors['bg_hover'])
+            name_frame.configure(bg=self.colors['bg_hover'])
+            checkbox.configure(bg=self.colors['bg_hover'], activebackground=self.colors['bg_hover'])
+            icon_label.configure(bg=self.colors['bg_hover'])
+            name_label.configure(bg=self.colors['bg_hover'])
+            desc_label.configure(bg=self.colors['bg_hover'])
+            status_indicator.configure(bg=self.colors['bg_hover'])
+            if not optional and required_badge is not None:
+                required_badge.configure(bg=self.colors['warning'])
+                
+        def on_leave(event):
+            card_frame.configure(bg=self.colors['bg_accent'])
+            card_content.configure(bg=self.colors['bg_accent'])
+            left_section.configure(bg=self.colors['bg_accent'])
+            center_section.configure(bg=self.colors['bg_accent'])
+            right_section.configure(bg=self.colors['bg_accent'])
+            name_frame.configure(bg=self.colors['bg_accent'])
+            checkbox.configure(bg=self.colors['bg_accent'], activebackground=self.colors['bg_accent'])
+            icon_label.configure(bg=self.colors['bg_accent'])
+            name_label.configure(bg=self.colors['bg_accent'])
+            desc_label.configure(bg=self.colors['bg_accent'])
+            status_indicator.configure(bg=self.colors['bg_accent'])
+            if not optional and required_badge is not None:
+                required_badge.configure(bg=self.colors['warning'])
+        
+        # Make entire card clickable to toggle selection
+        def on_click(event):
+            var.set(not var.get())
+            self.on_app_selection_change()
+        
+        # Bind events to all card elements
+        widgets_to_bind = [card_frame, card_content, left_section, center_section, right_section, 
+                          name_frame, icon_label, name_label, desc_label, status_indicator]
+        
+        for widget in widgets_to_bind:
+            widget.bind("<Enter>", on_enter)
+            widget.bind("<Leave>", on_leave)
+            widget.bind("<Button-1>", on_click)
+            widget.configure(cursor='hand2')
+    
+    def on_apps_frame_configure(self, event):
+        """Configure scrolling region when frame changes"""
+        self.apps_canvas.configure(scrollregion=self.apps_canvas.bbox("all"))
+    
+    def on_apps_canvas_configure(self, event):
+        """Configure canvas when it's resized"""
+        # Make the scroll frame width match the canvas
+        canvas_width = event.width
+        self.apps_canvas.itemconfig(self.apps_canvas_frame, width=canvas_width)
+    
+    def on_apps_mousewheel(self, event):
+        """Handle mouse wheel scrolling in app list"""
+        self.apps_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
         
     def create_visual_presets(self, parent):
         """Create visually appealing preset buttons"""
@@ -804,20 +1046,14 @@ class ExilesInstaller:
         pass
     
     def on_app_selection_change(self, event=None):
-        """Handle app selection changes"""
+        """Handle app selection changes with card interface"""
         try:
-            selected_indices = self.apps_listbox.curselection()
             self.selected_apps.clear()
             
-            for index in selected_indices:
-                display_text = self.apps_listbox.get(index)
-                app_name = display_text.split(' ', 1)[1] if ' ' in display_text else display_text
-                
-                # Find matching app by name
-                for app in self.apps_config.get('apps', []):
-                    if app.get('name') == app_name:
-                        self.selected_apps.add(app.get('id'))
-                        break
+            # Get selected apps from checkboxes
+            for app_id, var in self.app_vars.items():
+                if var.get():
+                    self.selected_apps.add(app_id)
             
             # Update status
             count = len(self.selected_apps)
@@ -828,59 +1064,33 @@ class ExilesInstaller:
             logger.error(f"Error in app selection: {e}")
     
     def filter_apps(self, event=None):
-        """Filter the apps list based on search text"""
+        """Filter the app cards based on search text"""
         try:
-            search_text = self.filter_var.get().lower()
-            self.apps_listbox.delete(0, tk.END)
-            
-            apps = self.apps_config.get('apps', [])
-            for app in apps:
-                name = app.get('name', 'Unknown')
-                description = app.get('description', '')
-                
-                # Check if search text matches name or description
-                if (search_text in name.lower() or 
-                    search_text in description.lower() or 
-                    not search_text):
-                    
-                    optional = app.get('optional', True)
-                    status = '□' if optional else '■'
-                    display_text = f"{status} {name}"
-                    self.apps_listbox.insert(tk.END, display_text)
+            # Refresh the cards with current filter
+            self.populate_app_cards()
                     
         except Exception as e:
             logger.error(f"Error filtering apps: {e}")
     
     def apply_preset(self, app_ids):
-        """Apply a preset selection"""
+        """Apply a preset selection with card interface"""
         try:
             # Clear current selection
-            self.apps_listbox.selection_clear(0, tk.END)
+            for var in self.app_vars.values():
+                var.set(False)
             self.selected_apps.clear()
             
             if app_ids == "all":
-                # Select all apps
-                for i in range(self.apps_listbox.size()):
-                    self.apps_listbox.selection_set(i)
-                    # Get app id from the display text
-                    display_text = self.apps_listbox.get(i)
-                    app_name = display_text.split(' ', 1)[1] if ' ' in display_text else display_text
-                    # Find matching app by name
-                    for app in self.apps_config.get('apps', []):
-                        if app.get('name') == app_name:
-                            self.selected_apps.add(app.get('id'))
-                            break
+                # Select all visible apps
+                for app_id, var in self.app_vars.items():
+                    var.set(True)
+                    self.selected_apps.add(app_id)
             else:
                 # Select specific apps
-                for i in range(self.apps_listbox.size()):
-                    display_text = self.apps_listbox.get(i)
-                    app_name = display_text.split(' ', 1)[1] if ' ' in display_text else display_text
-                    # Find matching app
-                    for app in self.apps_config.get('apps', []):
-                        if app.get('name') == app_name and app.get('id') in app_ids:
-                            self.apps_listbox.selection_set(i)
-                            self.selected_apps.add(app.get('id'))
-                            break
+                for app_id in app_ids:
+                    if app_id in self.app_vars:
+                        self.app_vars[app_id].set(True)
+                        self.selected_apps.add(app_id)
             
             # Update status
             count = len(self.selected_apps)
@@ -1061,82 +1271,69 @@ class ExilesInstaller:
             btn.pack(side='left', padx=(0, 5))
             
     def populate_apps_list(self):
-        """Populate the applications list"""
-        self.apps_listbox.delete(0, tk.END)
-        
-        filter_text = self.filter_var.get().lower() if hasattr(self, 'filter_var') else ""
-        
-        for app in self.apps_config.get('apps', []):
-            app_name = app.get('name', 'Unknown')
-            app_id = app.get('id', '')
-            optional = app.get('optional', True)
+        """Legacy method - now redirects to card-based interface"""
+        # This method is replaced by populate_app_cards for the new visual interface
+        if hasattr(self, 'populate_app_cards'):
+            self.populate_app_cards()
+        else:
+            logger.warning("populate_app_cards method not available - interface may not be initialized")
             
-            if filter_text and filter_text not in app_name.lower() and filter_text not in app_id.lower():
-                continue
-                
-            # Format the display text
-            status = "OPT" if optional else "REQ"
-            display_text = f"[{status}] {app_name} ({app_id})"
-            
-            self.apps_listbox.insert(tk.END, display_text)
-            
-    def filter_apps(self, event=None):
-        """Filter applications based on search text"""
-        self.populate_apps_list()
+    # Removed duplicate filter_apps method - using the card-based version
         
     def select_preset(self, app_ids):
-        """Select a preset group of applications"""
+        """Select a preset group of applications - updated for card interface"""
         if app_ids == "all":
             self.select_all_apps()
             return
             
         # Clear current selection
-        self.apps_listbox.selection_clear(0, tk.END)
+        for var in self.app_vars.values():
+            var.set(False)
+        self.selected_apps.clear()
         
-        # Select specified apps
-        for i in range(self.apps_listbox.size()):
-            item_text = self.apps_listbox.get(i)
-            for app_id in app_ids:
-                if f"({app_id})" in item_text:
-                    self.apps_listbox.selection_set(i)
-                    break
+        # Select specified apps using card interface
+        for app_id in app_ids:
+            if app_id in self.app_vars:
+                self.app_vars[app_id].set(True)
+                self.selected_apps.add(app_id)
+        
+        # Update status
+        self.on_app_selection_change()
                     
     def select_all_apps(self):
         """Select all applications"""
-        self.apps_listbox.selection_set(0, tk.END)
+        for var in self.app_vars.values():
+            var.set(True)
+        self.on_app_selection_change()
         
     def select_no_apps(self):
         """Deselect all applications"""
-        self.apps_listbox.selection_clear(0, tk.END)
+        for var in self.app_vars.values():
+            var.set(False)
+        self.on_app_selection_change()
         
     def start_installation(self):
         """Start the installation process"""
-        selected_indices = self.apps_listbox.curselection()
-        if not selected_indices:
+        if not self.selected_apps:
             messagebox.showwarning("No Selection", "Please select at least one application to install.")
             return
             
-        # Get selected apps
+        # Get selected apps from card interface
         selected_apps = []
         apps_list = self.apps_config.get('apps', [])
         
-        for index in selected_indices:
-            item_text = self.apps_listbox.get(index)
-            # Extract app ID from the display text
-            match = re.search(r'\(([^)]+)\)$', item_text)
-            if match:
-                app_id = match.group(1)
-                app_data = next((app for app in apps_list if app.get('id') == app_id), None)
-                if app_data:
-                    selected_apps.append(app_data)
+        for app_id in self.selected_apps:
+            app_data = next((app for app in apps_list if app.get('id') == app_id), None)
+            if app_data:
+                selected_apps.append(app_data)
                     
         if not selected_apps:
             messagebox.showerror("Error", "No valid applications selected.")
             return
             
         # Start installation in a separate thread
-        self.install_button.configure(state='disabled', text="INSTALLING...")
-        self.log_message("Starting installation process...", "info")
+        self.install_button.configure(state='disabled', text="🚀 DEPLOYING...")
+        self.log_message("Starting deployment process...", "info")
         
         install_thread = threading.Thread(target=self.install_apps, args=(selected_apps,))
         install_thread.daemon = True
