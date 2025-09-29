@@ -38,21 +38,34 @@ class ExilesInstaller:
         self.root = tk.Tk()
         self.root.title("Exiles Installer - Elite Dangerous Ecosystem")
         self.root.geometry("1200x800")
-        self.root.configure(bg='#0a0a0a')
+        self.root.configure(bg='#0b0f14')
         
-        # Elite Dangerous color scheme
+        # Exiles brand color scheme
         self.colors = {
-            'bg_primary': '#0a0a0a',
-            'bg_secondary': '#1a1a1a', 
-            'bg_panel': '#2a2a2a',
-            'accent_orange': '#ff6600',
-            'accent_blue': '#00aaff',
-            'text_primary': '#ffffff',
-            'text_secondary': '#cccccc',
-            'text_muted': '#888888',
-            'success': '#00ff00',
-            'warning': '#ffaa00',
-            'error': '#ff0000'
+            'bg_primary': '#0b0f14',      # HUD background dark
+            'bg_secondary': '#0f1620',    # HUD background slightly lighter
+            'bg_panel': '#1a1f2a',        # Medium dark for cards/panels
+            'accent_primary': '#B01515',  # Exiles Red - primary accent
+            'accent_secondary': '#17a2b8', # Cyan/teal for highlights
+            'accent_gold': '#FFD700',     # Golden yellow for special content
+            'accent_secondary': '#5bc0de',     # Light blue for exploration
+            'text_primary': '#ffffff',    # White text
+            'text_secondary': '#cccccc',  # Light grey text
+            'text_muted': '#888888',      # Muted grey text
+            'success': '#28A745',         # Green for success messages
+            'warning': '#FFD700',         # Golden yellow for warnings
+            'error': '#B01515'            # Exiles red for errors
+        }
+        
+        # Exiles brand fonts
+        self.fonts = {
+            'heading': ('Russo One', 24, 'bold'),      # Primary font for titles
+            'subheading': ('Russo One', 16, 'bold'),   # Secondary headings
+            'ui_large': ('Orbitron', 14, 'bold'),      # UI elements large
+            'ui_medium': ('Orbitron', 12, 'normal'),   # UI elements medium
+            'ui_small': ('Orbitron', 10, 'normal'),    # UI elements small
+            'body': ('Segoe UI', 11, 'normal'),        # Body text
+            'monospace': ('Consolas', 10, 'normal')    # Log/console text
         }
         
         # Load apps configuration
@@ -108,8 +121,8 @@ class ExilesInstaller:
         title_label = tk.Label(
             header_frame,
             text="EXILES INSTALLER",
-            font=('Consolas', 24, 'bold'),
-            fg=self.colors['accent_orange'],
+            font=self.fonts['heading'],
+            fg=self.colors['accent_primary'],
             bg=self.colors['bg_secondary']
         )
         title_label.pack(pady=10)
@@ -118,7 +131,7 @@ class ExilesInstaller:
         subtitle_label = tk.Label(
             header_frame,
             text="Elite Dangerous Ecosystem Installation System",
-            font=('Consolas', 12),
+            font=self.fonts['body'],
             fg=self.colors['text_secondary'],
             bg=self.colors['bg_secondary']
         )
@@ -146,8 +159,8 @@ class ExilesInstaller:
         title_label = tk.Label(
             left_frame,
             text="▼ APPLICATION SELECTION",
-            font=('Consolas', 14, 'bold'),
-            fg=self.colors['accent_blue'],
+            font=self.fonts['ui_large'],
+            fg=self.colors['accent_secondary'],
             bg=self.colors['bg_panel']
         )
         title_label.pack(pady=10, anchor='w', padx=10)
@@ -185,7 +198,7 @@ class ExilesInstaller:
             font=('Consolas', 9),
             bg=self.colors['bg_secondary'],
             fg=self.colors['text_primary'],
-            selectbackground=self.colors['accent_orange'],
+            selectbackground=self.colors['accent_primary'],
             selectforeground=self.colors['bg_primary'],
             activestyle='none',
             selectmode='multiple'
@@ -213,8 +226,8 @@ class ExilesInstaller:
         title_label = tk.Label(
             right_frame,
             text="▼ INSTALLATION PROGRESS",
-            font=('Consolas', 14, 'bold'),
-            fg=self.colors['accent_blue'],
+            font=self.fonts['ui_large'],
+            fg=self.colors['accent_secondary'],
             bg=self.colors['bg_panel']
         )
         title_label.pack(pady=10, anchor='w', padx=10)
@@ -267,10 +280,10 @@ class ExilesInstaller:
         self.install_button = tk.Button(
             control_frame,
             text="► INSTALL SELECTED",
-            font=('Consolas', 12, 'bold'),
-            bg=self.colors['accent_orange'],
+            font=self.fonts['ui_large'],
+            bg=self.colors['accent_primary'],
             fg=self.colors['bg_primary'],
-            activebackground=self.colors['accent_blue'],
+            activebackground=self.colors['accent_secondary'],
             activeforeground=self.colors['text_primary'],
             command=self.start_installation,
             padx=20,
