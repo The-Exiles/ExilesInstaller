@@ -114,64 +114,172 @@ class ExilesInstaller:
             return {"metadata": {}, "apps": []}
             
     def setup_ui(self):
-        """Setup the main user interface with modern spaceship HUD styling"""
-        # Configure window for modern look
+        """Setup a visually rich, modern interface"""
+        # Configure window for sleek look
         self.root.configure(bg=self.colors['bg_primary'])
         
-        # Main container with modern padding
+        # Create visual background gradient effect
+        self.create_background_canvas()
+        
+        # Main container with sophisticated layout
         main_frame = tk.Frame(self.root, bg=self.colors['bg_primary'])
-        main_frame.pack(fill='both', expand=True, padx=15, pady=15)
+        main_frame.pack(fill='both', expand=True, padx=0, pady=0)
         
-        # Header with enhanced styling
-        self.create_modern_header(main_frame)
+        # Create visual header with graphics
+        self.create_visual_header(main_frame)
         
-        # Content area with enhanced panels
+        # Main content with visual cards
         content_frame = tk.Frame(main_frame, bg=self.colors['bg_primary'])
-        content_frame.pack(fill='both', expand=True, pady=(15, 0))
+        content_frame.pack(fill='both', expand=True, padx=30, pady=20)
         
-        # Left panel - App selection with modern styling
-        self.create_modern_app_selection_panel(content_frame)
+        # Create visual dashboard layout
+        self.create_visual_dashboard(content_frame)
         
-        # Right panel - Installation progress with modern styling
-        self.create_modern_progress_panel(content_frame)
+        # Create visual control dock
+        self.create_visual_control_dock(main_frame)
         
-        # Bottom control panel with enhanced styling
-        self.create_modern_control_panel(main_frame)
+    def create_background_canvas(self):
+        """Create a visual background with gradient effect"""
+        # Canvas for background effects
+        self.bg_canvas = tk.Canvas(
+            self.root, 
+            bg=self.colors['bg_primary'],
+            highlightthickness=0
+        )
+        self.bg_canvas.place(x=0, y=0, relwidth=1, relheight=1)
         
-    def create_modern_header(self, parent):
-        """Create a sleek modern header"""
-        # Header container with gradient-like effect
-        header_frame = tk.Frame(parent, bg=self.colors['bg_secondary'], height=120)
-        header_frame.pack(fill='x', pady=(0, 25))
+        # Add subtle grid pattern
+        self.create_grid_pattern()
+        
+    def create_grid_pattern(self):
+        """Create a subtle grid pattern background"""
+        width = 1280
+        height = 900
+        grid_size = 40
+        
+        # Draw vertical lines
+        for x in range(0, width, grid_size):
+            self.bg_canvas.create_line(
+                x, 0, x, height,
+                fill=self.colors['border'], 
+                width=1,
+                stipple='gray25'
+            )
+            
+        # Draw horizontal lines
+        for y in range(0, height, grid_size):
+            self.bg_canvas.create_line(
+                0, y, width, y,
+                fill=self.colors['border'], 
+                width=1,
+                stipple='gray25'
+            )
+    
+    def create_visual_header(self, parent):
+        """Create a visually rich header with graphics"""
+        # Header with visual depth
+        header_frame = tk.Frame(parent, bg=self.colors['bg_primary'], height=140)
+        header_frame.pack(fill='x', pady=(20, 30))
         header_frame.pack_propagate(False)
         
-        # Title section with modern layout
-        title_section = tk.Frame(header_frame, bg=self.colors['bg_secondary'])
-        title_section.pack(expand=True, fill='both', padx=30, pady=20)
+        # Visual header background
+        header_bg = tk.Frame(header_frame, bg=self.colors['bg_secondary'], height=120)
+        header_bg.pack(fill='x', padx=20, pady=10)
+        header_bg.pack_propagate(False)
         
-        # Modern title with glowing effect
+        # Create visual elements
+        self.create_header_graphics(header_bg)
+        
+        # Title with visual styling
+        title_container = tk.Frame(header_bg, bg=self.colors['bg_secondary'])
+        title_container.pack(expand=True, fill='both')
+        
+        # Visual brand elements
+        brand_frame = tk.Frame(title_container, bg=self.colors['bg_secondary'])
+        brand_frame.pack(pady=20)
+        
+        # Logo-style text with visual elements
+        logo_frame = tk.Frame(brand_frame, bg=self.colors['bg_secondary'])
+        logo_frame.pack()
+        
+        # Left visual accent
+        left_accent = tk.Label(
+            logo_frame,
+            text="▣",
+            font=('Segoe UI Symbol', 20),
+            fg=self.colors['accent_primary'],
+            bg=self.colors['bg_secondary']
+        )
+        left_accent.pack(side='left', padx=(0, 15))
+        
+        # Main title
         title_label = tk.Label(
-            title_section,
+            logo_frame,
             text="EXILES INSTALLER",
-            font=self.fonts['heading'],
+            font=('Segoe UI', 28, 'bold'),
             fg=self.colors['accent_glow'],
             bg=self.colors['bg_secondary']
         )
-        title_label.pack(pady=(0, 8))
+        title_label.pack(side='left')
         
-        # Modern subtitle with better typography
+        # Right visual accent
+        right_accent = tk.Label(
+            logo_frame,
+            text="▣",
+            font=('Segoe UI Symbol', 20),
+            fg=self.colors['accent_primary'],
+            bg=self.colors['bg_secondary']
+        )
+        right_accent.pack(side='left', padx=(15, 0))
+        
+        # Subtitle with visual elements
+        subtitle_frame = tk.Frame(brand_frame, bg=self.colors['bg_secondary'])
+        subtitle_frame.pack(pady=(10, 0))
+        
+        # Visual divider
+        divider = tk.Label(
+            subtitle_frame,
+            text="━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
+            font=('Segoe UI', 8),
+            fg=self.colors['border_accent'],
+            bg=self.colors['bg_secondary']
+        )
+        divider.pack()
+        
         subtitle_label = tk.Label(
-            title_section,
-            text="Elite Dangerous Ecosystem • Modern Deployment System",
-            font=self.fonts['ui_medium'],
+            subtitle_frame,
+            text="Elite Dangerous Ecosystem • Automated Deployment System",
+            font=('Segoe UI', 12),
             fg=self.colors['text_secondary'],
             bg=self.colors['bg_secondary']
         )
-        subtitle_label.pack()
+        subtitle_label.pack(pady=(5, 0))
         
-        # Status indicator strip
-        status_strip = tk.Frame(header_frame, bg=self.colors['border_accent'], height=2)
-        status_strip.pack(fill='x', side='bottom')
+    def create_header_graphics(self, parent):
+        """Add visual graphics to header"""
+        # Corner decorations
+        corners_frame = tk.Frame(parent, bg=self.colors['bg_secondary'])
+        corners_frame.pack(fill='x')
+        
+        # Top-left corner element
+        tl_corner = tk.Label(
+            corners_frame,
+            text="┌─────",
+            font=('Consolas', 10),
+            fg=self.colors['accent_secondary'],
+            bg=self.colors['bg_secondary']
+        )
+        tl_corner.pack(side='left', anchor='nw')
+        
+        # Top-right corner element
+        tr_corner = tk.Label(
+            corners_frame,
+            text="─────┐",
+            font=('Consolas', 10),
+            fg=self.colors['accent_secondary'],
+            bg=self.colors['bg_secondary']
+        )
+        tr_corner.pack(side='right', anchor='ne')
         
     def create_modern_app_selection_panel(self, parent):
         """Create the modern application selection panel"""
@@ -241,56 +349,409 @@ class ExilesInstaller:
         # Populate apps list
         self.populate_apps_list()
         
-        # Modern quick selection presets
-        self.create_modern_quick_selection(left_frame)
+        # Visual quick selection presets
+        self.create_visual_quick_selection(left_frame)
     
-    def create_modern_quick_selection(self, parent):
-        """Create modern preset selection buttons"""
-        # Presets card
-        presets_card = tk.Frame(parent, bg=self.colors['bg_secondary'])
-        presets_card.pack(fill='x')
+    def create_visual_dashboard(self, parent):
+        """Create the main visual dashboard"""
+        # Dashboard container
+        dashboard = tk.Frame(parent, bg=self.colors['bg_primary'])
+        dashboard.pack(fill='both', expand=True)
         
-        # Header
-        header_frame = tk.Frame(presets_card, bg=self.colors['bg_secondary'])
-        header_frame.pack(fill='x', padx=20, pady=(15, 10))
+        # Create visual cards
+        self.create_app_selection_card(dashboard)
+        self.create_installation_monitor_card(dashboard)
         
-        preset_title = tk.Label(
-            header_frame,
-            text="Quick Select",
-            font=self.fonts['ui_medium'],
+    def create_app_selection_card(self, parent):
+        """Create visually rich app selection card"""
+        # Left side - App selection
+        left_container = tk.Frame(parent, bg=self.colors['bg_primary'])
+        left_container.pack(side='left', fill='both', expand=True, padx=(0, 15))
+        
+        # Card with visual styling
+        card = tk.Frame(left_container, bg=self.colors['bg_secondary'])
+        card.pack(fill='both', expand=True)
+        
+        # Card header with visual elements
+        self.create_card_header(card, "⬢ APPLICATION MATRIX", "Select tools for deployment")
+        
+        # Visual app list
+        self.create_visual_app_list(card)
+        
+        # Visual preset buttons
+        self.create_visual_presets(card)
+        
+    def create_installation_monitor_card(self, parent):
+        """Create visually rich installation monitor"""
+        # Right side - Installation monitor
+        right_container = tk.Frame(parent, bg=self.colors['bg_primary'])
+        right_container.pack(side='right', fill='both', expand=True)
+        
+        # Card with visual styling
+        card = tk.Frame(right_container, bg=self.colors['bg_secondary'])
+        card.pack(fill='both', expand=True)
+        
+        # Card header
+        self.create_card_header(card, "⬢ DEPLOYMENT MONITOR", "Real-time installation status")
+        
+        # Visual progress display
+        self.create_visual_progress_display(card)
+        
+    def create_card_header(self, parent, title, subtitle):
+        """Create a visually rich card header"""
+        header_frame = tk.Frame(parent, bg=self.colors['bg_accent'], height=80)
+        header_frame.pack(fill='x')
+        header_frame.pack_propagate(False)
+        
+        # Header content
+        header_content = tk.Frame(header_frame, bg=self.colors['bg_accent'])
+        header_content.pack(expand=True, fill='both', padx=25, pady=15)
+        
+        # Title with icon
+        title_frame = tk.Frame(header_content, bg=self.colors['bg_accent'])
+        title_frame.pack(anchor='w')
+        
+        title_label = tk.Label(
+            title_frame,
+            text=title,
+            font=('Segoe UI', 16, 'bold'),
+            fg=self.colors['accent_glow'],
+            bg=self.colors['bg_accent']
+        )
+        title_label.pack(side='left')
+        
+        # Subtitle
+        subtitle_label = tk.Label(
+            header_content,
+            text=subtitle,
+            font=('Segoe UI', 10),
+            fg=self.colors['text_muted'],
+            bg=self.colors['bg_accent']
+        )
+        subtitle_label.pack(anchor='w', pady=(5, 0))
+        
+        # Visual separator
+        separator = tk.Frame(parent, bg=self.colors['accent_primary'], height=3)
+        separator.pack(fill='x')
+        
+    def create_visual_app_list(self, parent):
+        """Create a visually enhanced app list"""
+        # List container with visual styling
+        list_container = tk.Frame(parent, bg=self.colors['bg_secondary'])
+        list_container.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Search/filter section
+        filter_section = tk.Frame(list_container, bg=self.colors['bg_panel'], height=50)
+        filter_section.pack(fill='x', pady=(0, 15))
+        filter_section.pack_propagate(False)
+        
+        filter_content = tk.Frame(filter_section, bg=self.colors['bg_panel'])
+        filter_content.pack(expand=True, fill='both', padx=20, pady=10)
+        
+        # Search icon and field
+        search_frame = tk.Frame(filter_content, bg=self.colors['bg_panel'])
+        search_frame.pack(fill='x')
+        
+        search_icon = tk.Label(
+            search_frame,
+            text="🔍",
+            font=('Segoe UI Emoji', 12),
+            fg=self.colors['text_muted'],
+            bg=self.colors['bg_panel']
+        )
+        search_icon.pack(side='left', padx=(0, 10))
+        
+        self.filter_var = tk.StringVar()
+        search_entry = tk.Entry(
+            search_frame,
+            textvariable=self.filter_var,
+            font=('Segoe UI', 11),
+            bg=self.colors['bg_primary'],
+            fg=self.colors['text_primary'],
+            insertbackground=self.colors['text_primary'],
+            bd=0,
+            relief='flat'
+        )
+        search_entry.pack(fill='x', ipady=8)
+        search_entry.bind('<KeyRelease>', self.filter_apps)
+        
+        # Visual app list with custom styling
+        apps_frame = tk.Frame(list_container, bg=self.colors['bg_secondary'])
+        apps_frame.pack(fill='both', expand=True)
+        
+        # Custom listbox with visual styling
+        self.apps_listbox = tk.Listbox(
+            apps_frame,
+            font=('Segoe UI', 11),
+            bg=self.colors['bg_panel'],
+            fg=self.colors['text_primary'],
+            selectbackground=self.colors['accent_primary'],
+            selectforeground=self.colors['text_primary'],
+            bd=0,
+            highlightthickness=0,
+            relief='flat',
+            selectmode='multiple',
+            activestyle='none'
+        )
+        
+        # Scrollbar with visual styling
+        scrollbar = tk.Scrollbar(
+            apps_frame, 
+            orient='vertical', 
+            command=self.apps_listbox.yview,
+            bg=self.colors['bg_panel'],
+            troughcolor=self.colors['bg_secondary'],
+            activebackground=self.colors['accent_secondary']
+        )
+        self.apps_listbox.configure(yscrollcommand=scrollbar.set)
+        
+        self.apps_listbox.pack(side='left', fill='both', expand=True)
+        scrollbar.pack(side='right', fill='y')
+        
+        # Bind selection events
+        self.apps_listbox.bind('<<ListboxSelect>>', self.on_app_selection_change)
+        
+        # Populate apps list
+        self.populate_apps_list()
+        
+    def create_visual_presets(self, parent):
+        """Create visually appealing preset buttons"""
+        # Presets section
+        presets_section = tk.Frame(parent, bg=self.colors['bg_secondary'])
+        presets_section.pack(fill='x', padx=20, pady=(0, 20))
+        
+        # Section header
+        presets_header = tk.Frame(presets_section, bg=self.colors['bg_secondary'])
+        presets_header.pack(fill='x', pady=(0, 15))
+        
+        header_divider = tk.Frame(presets_header, bg=self.colors['border_accent'], height=1)
+        header_divider.pack(fill='x', pady=(0, 10))
+        
+        presets_title = tk.Label(
+            presets_header,
+            text="⚡ QUICK DEPLOY PRESETS",
+            font=('Segoe UI', 12, 'bold'),
+            fg=self.colors['accent_secondary'],
+            bg=self.colors['bg_secondary']
+        )
+        presets_title.pack(anchor='w')
+        
+        # Preset buttons grid
+        buttons_grid = tk.Frame(presets_section, bg=self.colors['bg_secondary'])
+        buttons_grid.pack(fill='x')
+        
+        presets = [
+            ("🎯 Essential", ["EDMC", "EDDI", "VoiceAttack"], "Core tools for commanders"),
+            ("🗺️ Explorer", ["EDMC", "EDDiscovery", "opentrack"], "Exploration & tracking"),
+            ("🕹️ HOTAS", ["JoystickGremlin", "HidHide", "vJoy"], "Flight control setup"),
+            ("📦 Complete", "all", "Deploy everything")
+        ]
+        
+        for i, (name, app_ids, desc) in enumerate(presets):
+            self.create_preset_button(buttons_grid, name, desc, app_ids, i)
+            
+    def create_preset_button(self, parent, name, description, app_ids, index):
+        """Create a single visual preset button"""
+        # Button container
+        btn_container = tk.Frame(parent, bg=self.colors['bg_secondary'])
+        if index < 2:
+            btn_container.pack(side='left', fill='x', expand=True, padx=(0, 10))
+        else:
+            btn_container.pack(side='left', fill='x', expand=True, padx=(10, 0))
+        
+        # Visual button with hover effects
+        btn_frame = tk.Frame(btn_container, bg=self.colors['bg_accent'])
+        btn_frame.pack(fill='both', pady=5)
+        
+        # Button content
+        btn_content = tk.Frame(btn_frame, bg=self.colors['bg_accent'])
+        btn_content.pack(expand=True, fill='both', padx=15, pady=12)
+        
+        # Button title
+        btn_title = tk.Label(
+            btn_content,
+            text=name,
+            font=('Segoe UI', 11, 'bold'),
+            fg=self.colors['text_primary'],
+            bg=self.colors['bg_accent'],
+            cursor='hand2'
+        )
+        btn_title.pack()
+        
+        # Button description
+        btn_desc = tk.Label(
+            btn_content,
+            text=description,
+            font=('Segoe UI', 9),
+            fg=self.colors['text_muted'],
+            bg=self.colors['bg_accent'],
+            cursor='hand2'
+        )
+        btn_desc.pack(pady=(2, 0))
+        
+        # Make entire button clickable
+        def on_click(event):
+            self.apply_preset(app_ids)
+            
+        def on_enter(event):
+            btn_frame.configure(bg=self.colors['bg_hover'])
+            btn_content.configure(bg=self.colors['bg_hover'])
+            btn_title.configure(bg=self.colors['bg_hover'])
+            btn_desc.configure(bg=self.colors['bg_hover'])
+            
+        def on_leave(event):
+            btn_frame.configure(bg=self.colors['bg_accent'])
+            btn_content.configure(bg=self.colors['bg_accent'])
+            btn_title.configure(bg=self.colors['bg_accent'])
+            btn_desc.configure(bg=self.colors['bg_accent'])
+        
+        # Bind events to all elements
+        for widget in [btn_frame, btn_content, btn_title, btn_desc]:
+            widget.bind("<Button-1>", on_click)
+            widget.bind("<Enter>", on_enter)
+            widget.bind("<Leave>", on_leave)
+            
+    def create_visual_progress_display(self, parent):
+        """Create a visually rich progress display"""
+        # Progress container
+        progress_container = tk.Frame(parent, bg=self.colors['bg_secondary'])
+        progress_container.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Status display area
+        status_area = tk.Frame(progress_container, bg=self.colors['bg_panel'])
+        status_area.pack(fill='both', expand=True)
+        
+        # Status content
+        status_content = tk.Frame(status_area, bg=self.colors['bg_panel'])
+        status_content.pack(fill='both', expand=True, padx=20, pady=20)
+        
+        # Progress text with visual styling
+        self.progress_text = tk.Text(
+            status_content,
+            font=('Consolas', 10),
+            bg=self.colors['bg_primary'],
+            fg=self.colors['text_primary'],
+            insertbackground=self.colors['text_primary'],
+            state='disabled',
+            wrap='word',
+            bd=0,
+            relief='flat'
+        )
+        
+        # Progress scrollbar
+        progress_scrollbar = tk.Scrollbar(
+            status_content, 
+            orient='vertical', 
+            command=self.progress_text.yview,
+            bg=self.colors['bg_panel'],
+            troughcolor=self.colors['bg_secondary'],
+            activebackground=self.colors['accent_secondary']
+        )
+        self.progress_text.configure(yscrollcommand=progress_scrollbar.set)
+        
+        self.progress_text.pack(side='left', fill='both', expand=True)
+        progress_scrollbar.pack(side='right', fill='y')
+        
+        # Visual progress bar section
+        progress_section = tk.Frame(progress_container, bg=self.colors['bg_secondary'])
+        progress_section.pack(fill='x', pady=(15, 0))
+        
+        # Progress bar with visual styling
+        progress_bg = tk.Frame(progress_section, bg=self.colors['bg_panel'], height=30)
+        progress_bg.pack(fill='x')
+        progress_bg.pack_propagate(False)
+        
+        progress_content = tk.Frame(progress_bg, bg=self.colors['bg_panel'])
+        progress_content.pack(expand=True, fill='both', padx=20, pady=8)
+        
+        # Custom progress bar
+        self.progress_bar = ttk.Progressbar(
+            progress_content,
+            mode='determinate',
+            style='Custom.Horizontal.TProgressbar'
+        )
+        self.progress_bar.pack(fill='x')
+        
+        # Configure custom progress bar style
+        style = ttk.Style()
+        style.configure(
+            'Custom.Horizontal.TProgressbar',
+            background=self.colors['accent_primary'],
+            troughcolor=self.colors['bg_accent'],
+            borderwidth=0,
+            lightcolor=self.colors['accent_primary'],
+            darkcolor=self.colors['accent_primary']
+        )
+        
+        # Status label
+        self.status_label = tk.Label(
+            progress_section,
+            text="Ready for deployment",
+            font=('Segoe UI', 10),
             fg=self.colors['text_secondary'],
             bg=self.colors['bg_secondary']
         )
-        preset_title.pack(anchor='w')
+        self.status_label.pack(pady=(10, 0))
         
-        # Button container
-        buttons_container = tk.Frame(presets_card, bg=self.colors['bg_secondary'])
-        buttons_container.pack(fill='x', padx=20, pady=(0, 20))
+    def create_visual_control_dock(self, parent):
+        """Create a visual control dock"""
+        # Control dock container
+        dock = tk.Frame(parent, bg=self.colors['bg_secondary'], height=120)
+        dock.pack(fill='x', pady=(20, 20), padx=20)
+        dock.pack_propagate(False)
         
-        presets = [
-            ("Essential", ["EDMC", "EDDI", "VoiceAttack"]),
-            ("Explorer", ["EDMC", "EDDiscovery", "opentrack"]),
-            ("HOTAS", ["JoystickGremlin", "HidHide", "vJoy"]),
-            ("All", "all")
+        # Dock content
+        dock_content = tk.Frame(dock, bg=self.colors['bg_secondary'])
+        dock_content.pack(expand=True, fill='both', padx=30, pady=20)
+        
+        # Main action area
+        action_area = tk.Frame(dock_content, bg=self.colors['bg_secondary'])
+        action_area.pack(side='left', fill='y')
+        
+        # Primary action button with visual styling
+        self.install_button = tk.Button(
+            action_area,
+            text="🚀 DEPLOY APPLICATIONS",
+            font=('Segoe UI', 14, 'bold'),
+            bg=self.colors['accent_primary'],
+            fg=self.colors['text_primary'],
+            activebackground=self.colors['accent_secondary'],
+            activeforeground=self.colors['text_primary'],
+            command=self.start_installation,
+            cursor='hand2',
+            relief='flat',
+            bd=0,
+            pady=18,
+            padx=40
+        )
+        self.install_button.pack()
+        
+        # Secondary actions
+        secondary_area = tk.Frame(dock_content, bg=self.colors['bg_secondary'])
+        secondary_area.pack(side='left', fill='y', padx=(30, 0))
+        
+        secondary_buttons = [
+            ("📋 Select All", self.select_all_apps),
+            ("❌ Clear All", self.select_no_apps)
         ]
         
-        for i, (name, app_ids) in enumerate(presets):
+        for text, command in secondary_buttons:
             btn = tk.Button(
-                buttons_container,
-                text=name,
-                font=self.fonts['ui_small'],
+                secondary_area,
+                text=text,
+                font=('Segoe UI', 10),
                 bg=self.colors['bg_accent'],
                 fg=self.colors['text_primary'],
                 activebackground=self.colors['bg_hover'],
                 activeforeground=self.colors['text_primary'],
+                command=command,
                 relief='flat',
                 bd=0,
-                pady=8,
-                padx=15,
-                cursor='hand2',
-                command=lambda aids=app_ids: self.apply_preset(aids)
+                pady=12,
+                padx=20,
+                cursor='hand2'
             )
-            btn.pack(side='left', padx=5, pady=5)
+            btn.pack(pady=2)
             
             # Hover effects
             def on_enter(e, button=btn):
@@ -300,40 +761,134 @@ class ExilesInstaller:
             
             btn.bind("<Enter>", on_enter)
             btn.bind("<Leave>", on_leave)
-    
-    def apply_preset(self, app_ids):
-        """Apply a preset selection"""
-        # Clear current selection
-        self.apps_listbox.selection_clear(0, tk.END)
-        self.selected_apps.clear()
         
-        if app_ids == "all":
-            # Select all apps
-            for i in range(self.apps_listbox.size()):
-                self.apps_listbox.selection_set(i)
-                # Get app id from the display text
-                display_text = self.apps_listbox.get(i)
+        # Utility tools area
+        utilities_area = tk.Frame(dock_content, bg=self.colors['bg_secondary'])
+        utilities_area.pack(side='right', fill='y')
+        
+        utility_buttons = [
+            ("⚙️ Settings", self.show_settings),
+            ("📋 View Log", self.show_log),
+            ("🔄 Check Updates", self.manual_update_check)
+        ]
+        
+        for text, command in utility_buttons:
+            btn = tk.Button(
+                utilities_area,
+                text=text,
+                font=('Segoe UI', 9),
+                bg=self.colors['info'],
+                fg=self.colors['text_primary'],
+                activebackground=self.colors['bg_hover'],
+                activeforeground=self.colors['text_primary'],
+                command=command,
+                relief='flat',
+                bd=0,
+                pady=8,
+                padx=15,
+                cursor='hand2'
+            )
+            btn.pack(side='left', padx=3)
+            
+            # Hover effects
+            def on_enter(e, button=btn):
+                button.configure(bg=self.colors['bg_hover'])
+            def on_leave(e, button=btn):
+                button.configure(bg=self.colors['info'])
+            
+            btn.bind("<Enter>", on_enter)
+            btn.bind("<Leave>", on_leave)
+    
+    def create_visual_quick_selection(self, parent):
+        """This method is replaced by create_visual_presets"""
+        pass
+    
+    def on_app_selection_change(self, event=None):
+        """Handle app selection changes"""
+        try:
+            selected_indices = self.apps_listbox.curselection()
+            self.selected_apps.clear()
+            
+            for index in selected_indices:
+                display_text = self.apps_listbox.get(index)
                 app_name = display_text.split(' ', 1)[1] if ' ' in display_text else display_text
+                
                 # Find matching app by name
                 for app in self.apps_config.get('apps', []):
                     if app.get('name') == app_name:
                         self.selected_apps.add(app.get('id'))
                         break
-        else:
-            # Select specific apps
-            for i in range(self.apps_listbox.size()):
-                display_text = self.apps_listbox.get(i)
-                app_name = display_text.split(' ', 1)[1] if ' ' in display_text else display_text
-                # Find matching app
-                for app in self.apps_config.get('apps', []):
-                    if app.get('name') == app_name and app.get('id') in app_ids:
-                        self.apps_listbox.selection_set(i)
-                        self.selected_apps.add(app.get('id'))
-                        break
-        
-        # Update status
-        count = len(self.selected_apps)
-        self.status_label.configure(text=f"{count} applications selected for installation")
+            
+            # Update status
+            count = len(self.selected_apps)
+            if hasattr(self, 'status_label'):
+                self.status_label.configure(text=f"{count} applications selected for deployment")
+                
+        except Exception as e:
+            logger.error(f"Error in app selection: {e}")
+    
+    def filter_apps(self, event=None):
+        """Filter the apps list based on search text"""
+        try:
+            search_text = self.filter_var.get().lower()
+            self.apps_listbox.delete(0, tk.END)
+            
+            apps = self.apps_config.get('apps', [])
+            for app in apps:
+                name = app.get('name', 'Unknown')
+                description = app.get('description', '')
+                
+                # Check if search text matches name or description
+                if (search_text in name.lower() or 
+                    search_text in description.lower() or 
+                    not search_text):
+                    
+                    optional = app.get('optional', True)
+                    status = '□' if optional else '■'
+                    display_text = f"{status} {name}"
+                    self.apps_listbox.insert(tk.END, display_text)
+                    
+        except Exception as e:
+            logger.error(f"Error filtering apps: {e}")
+    
+    def apply_preset(self, app_ids):
+        """Apply a preset selection"""
+        try:
+            # Clear current selection
+            self.apps_listbox.selection_clear(0, tk.END)
+            self.selected_apps.clear()
+            
+            if app_ids == "all":
+                # Select all apps
+                for i in range(self.apps_listbox.size()):
+                    self.apps_listbox.selection_set(i)
+                    # Get app id from the display text
+                    display_text = self.apps_listbox.get(i)
+                    app_name = display_text.split(' ', 1)[1] if ' ' in display_text else display_text
+                    # Find matching app by name
+                    for app in self.apps_config.get('apps', []):
+                        if app.get('name') == app_name:
+                            self.selected_apps.add(app.get('id'))
+                            break
+            else:
+                # Select specific apps
+                for i in range(self.apps_listbox.size()):
+                    display_text = self.apps_listbox.get(i)
+                    app_name = display_text.split(' ', 1)[1] if ' ' in display_text else display_text
+                    # Find matching app
+                    for app in self.apps_config.get('apps', []):
+                        if app.get('name') == app_name and app.get('id') in app_ids:
+                            self.apps_listbox.selection_set(i)
+                            self.selected_apps.add(app.get('id'))
+                            break
+            
+            # Update status
+            count = len(self.selected_apps)
+            if hasattr(self, 'status_label'):
+                self.status_label.configure(text=f"{count} applications selected for deployment")
+                
+        except Exception as e:
+            logger.error(f"Error applying preset: {e}")
         
     def create_modern_progress_panel(self, parent):
         """Create the modern installation progress panel"""
