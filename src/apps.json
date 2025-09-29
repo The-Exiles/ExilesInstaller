@@ -24,6 +24,7 @@
       "github_asset": "EDMarketConnector_Setup.exe", 
       "optional": false,
       "description": "Essential tool for uploading market data to EDDN",
+      "category": "Core Tools",
       "checksum": ""
     },
     { 
@@ -33,7 +34,8 @@
       "github_repo": "EDCD/EDDI", 
       "github_asset": "EDDI.Setup.exe", 
       "optional": true,
-      "description": "Voice response system providing spoken information about game events"
+      "description": "Voice response system providing spoken information about game events",
+      "category": "Voice & Audio"
     },
     { 
       "id": "EDDiscovery", 
@@ -43,6 +45,7 @@
       "github_asset": "EDDiscovery.zip", 
       "optional": true,
       "description": "Comprehensive exploration and travel tracking tool",
+      "category": "Core Tools",
       "post_steps": [
         { 
           "Name": "Extract", 
@@ -57,7 +60,8 @@
       "github_repo": "msarilar/EDEngineer", 
       "github_asset": "EDEngineer-Setup.exe", 
       "optional": true,
-      "description": "Engineering materials and blueprint tracker"
+      "description": "Engineering materials and blueprint tracker",
+      "category": "Utilities"
     },
     { 
       "id": "EDHM-UI", 
@@ -66,7 +70,8 @@
       "url": "https://bluemystical.github.io/edhm-api/edhm_ui_setup.exe", 
       "filename": "EDHM_UI_Setup.exe", 
       "optional": true,
-      "description": "Tool for customizing Elite Dangerous HUD colors"
+      "description": "Tool for customizing Elite Dangerous HUD colors",
+      "category": "Utilities"
     },
     { 
       "id": "EDMC-Overlay", 
@@ -76,6 +81,7 @@
       "github_asset": "EDMCOverlay.zip", 
       "optional": true,
       "description": "Overlay plugin for EDMC to display information in-game",
+      "category": "Utilities",
       "post_steps": [
         { 
           "Name": "Extract", 
@@ -94,7 +100,8 @@
       "url": "https://voiceattack.com/file/VoiceAttackInstall.exe", 
       "filename": "VoiceAttackInstall.exe", 
       "optional": true,
-      "description": "Voice command software for hands-free operation"
+      "description": "Voice command software for hands-free operation",
+      "category": "Voice & Audio"
     },
     { 
       "id": "JoystickGremlin", 
@@ -103,7 +110,8 @@
       "github_repo": "WhiteMagic/JoystickGremlin", 
       "github_asset": "JoystickGremlin-13.3.msi", 
       "optional": true,
-      "description": "Advanced joystick configuration and macro tool"
+      "description": "Advanced joystick configuration and macro tool",
+      "category": "Hardware & Input"
     },
     { 
       "id": "HidHide", 
@@ -112,7 +120,8 @@
       "github_repo": "nefarius/HidHide", 
       "github_asset": "HidHide_1.4.192_x64.exe", 
       "optional": true,
-      "description": "Tool for hiding input devices from games"
+      "description": "Tool for hiding input devices from games",
+      "category": "Hardware & Input"
     },
     { 
       "id": "vJoy", 
@@ -121,7 +130,8 @@
       "url": "https://downloads.sourceforge.net/project/vjoystick/Beta%202.x/2.1.8.39-270518/vJoySetup.exe", 
       "filename": "vJoySetup.exe", 
       "optional": true,
-      "description": "Virtual joystick driver for advanced HOTAS setups"
+      "description": "Virtual joystick driver for advanced HOTAS setups",
+      "category": "Hardware & Input"
     },
     { 
       "id": "opentrack", 
@@ -130,7 +140,8 @@
       "github_repo": "opentrack/opentrack", 
       "github_asset": "opentrack-2024-06-23.exe", 
       "optional": true,
-      "description": "Free head tracking software for enhanced immersion"
+      "description": "Free head tracking software for enhanced immersion",
+      "category": "Head Tracking"
     },
     { 
       "id": "TrackIR", 
@@ -139,7 +150,8 @@
       "url": "https://www.trackir.com/dl/software/TrackIR_5.5.3.exe", 
       "filename": "TrackIR_5.5.3.exe", 
       "optional": true,
-      "description": "Official TrackIR head tracking software"
+      "description": "Official TrackIR head tracking software",
+      "category": "Head Tracking"
     },
     { 
       "id": "TobiiGameHub", 
@@ -148,7 +160,8 @@
       "url": "https://gaming.tobii.com/downloads/TobiiGameHubSetup.exe", 
       "filename": "TobiiGameHubSetup.exe", 
       "optional": true,
-      "description": "Tobii eye tracking software for gaming"
+      "description": "Tobii eye tracking software for gaming",
+      "category": "Head Tracking"
     },
     { 
       "id": "VIRPIL-VPC", 
@@ -157,7 +170,8 @@
       "url": "https://support.virpil.com/storage/Software/VPC_Software_Setup.exe", 
       "filename": "VPC_Software_Setup.exe", 
       "optional": true,
-      "description": "Configuration software for VIRPIL HOTAS controllers"
+      "description": "Configuration software for VIRPIL HOTAS controllers",
+      "category": "Hardware & Input"
     },
     { 
       "id": "VKBDevCfg", 
@@ -167,7 +181,8 @@
       "filename": "VKBDevCfg.zip", 
       "optional": true, 
       "extract_to": "VKBDevCfg",
-      "description": "Configuration software for VKB HOTAS controllers"
+      "description": "Configuration software for VKB HOTAS controllers",
+      "category": "Hardware & Input"
     },
     { 
       "id": "TARGET", 
@@ -176,7 +191,8 @@
       "url": "https://ts.thrustmaster.com/download/pub/tmsoftware/target/TARGET_v3.0.16.426.exe", 
       "filename": "TARGET_v3.0.16.426.exe", 
       "optional": true,
-      "description": "Advanced scripting software for Thrustmaster HOTAS"
+      "description": "Advanced scripting software for Thrustmaster HOTAS",
+      "category": "Hardware & Input"
     },
     { 
       "id": "Logitech-GHUB", 
@@ -184,7 +200,8 @@
       "install_type": "winget", 
       "winget_id": "Logitech.GHUB", 
       "optional": true,
-      "description": "Configuration software for Logitech gaming peripherals"
+      "description": "Configuration software for Logitech gaming peripherals",
+      "category": "Hardware & Input"
     },
     { 
       "id": "AutoHotkey", 
@@ -192,7 +209,8 @@
       "install_type": "winget", 
       "winget_id": "AutoHotkey.AutoHotkey", 
       "optional": true,
-      "description": "Automation scripting language for Windows"
+      "description": "Automation scripting language for Windows",
+      "category": "Utilities"
     },
     { 
       "id": "7zip", 
@@ -201,6 +219,7 @@
       "winget_id": "7zip.7zip", 
       "optional": true,
       "description": "File archiver with high compression ratio",
+      "category": "Utilities",
       "checksum": ""
     }
       ]

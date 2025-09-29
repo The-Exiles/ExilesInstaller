@@ -566,23 +566,10 @@ class ExilesInstaller:
         type_label.pack(side='left', padx=(0, 10))
         
         self.filter_type_var = tk.StringVar(value="All")
-        type_options = ["All", "Essential", "Optional", "GitHub", "Direct Download", "Windows Package", "Web Tools"]
         
-        type_dropdown = tk.OptionMenu(
-            filter_type_frame,
-            self.filter_type_var,
-            *type_options,
-            command=self.on_filter_change
-        )
-        type_dropdown.configure(
-            bg=self.colors['bg_primary'],
-            fg=self.colors['text_primary'],
-            activebackground=self.colors['bg_hover'],
-            activeforeground=self.colors['text_primary'],
-            bd=0,
-            relief='flat'
-        )
-        type_dropdown.pack(side='left')
+        # Store reference for dynamic updates
+        self.filter_type_frame = filter_type_frame
+        self.create_filter_dropdown()
         
         # Modern app cards container
         apps_container = tk.Frame(list_container, bg=self.colors['bg_secondary'])
@@ -694,11 +681,13 @@ class ExilesInstaller:
                     continue
                 
                 # Apply type filter
-                if filter_type != "All":
+                if filter_type != "All" and filter_type != "─────":  # Skip separator
+                    # Standard filters
                     if filter_type == "Essential" and is_optional:
                         continue
                     elif filter_type == "Optional" and not is_optional:
                         continue
+                    # Installation type filters
                     elif filter_type == "GitHub" and install_type != "github":
                         continue
                     elif filter_type == "Direct Download" and install_type not in ["exe", "zip"]:
@@ -707,6 +696,11 @@ class ExilesInstaller:
                         continue
                     elif filter_type == "Web Tools" and install_type != "web":
                         continue
+                    # Category filters (any filter not matching above is assumed to be a category)
+                    elif filter_type not in ["Essential", "Optional", "GitHub", "Direct Download", "Windows Package", "Web Tools"]:
+                        app_category = app.get('category', 'General')
+                        if filter_type != app_category:
+                            continue
                 
                 self.create_app_card(app, app_icons)
                 
@@ -720,6 +714,12 @@ class ExilesInstaller:
         name = app.get('name', 'Unknown')
         description = app.get('description', 'No description available')
         optional = app.get('optional', True)
+        category = app.get('category', 'General')
+        
+        # Get current game information
+        games = self.apps_config.get("games", {})
+        current_game_data = games.get(self.current_game, {})
+        game_name = current_game_data.get("name", self.current_game)
         
         # Get icon for this app
         icon = app_icons.get(name, '📦')
@@ -789,6 +789,18 @@ class ExilesInstaller:
         )
         name_label.pack(side='left')
         
+        # Category badge (always show)
+        category_badge = tk.Label(
+            name_frame,
+            text=category,
+            font=('Segoe UI', 8, 'bold'),
+            fg=self.colors['text_primary'],
+            bg=self.colors['info'],
+            padx=8,
+            pady=2
+        )
+        category_badge.pack(side='left', padx=(10, 0))
+        
         # Optional/Required badge
         required_badge = None
         if not optional:
@@ -801,7 +813,7 @@ class ExilesInstaller:
                 padx=8,
                 pady=2
             )
-            required_badge.pack(side='left', padx=(10, 0))
+            required_badge.pack(side='left', padx=(5, 0))
         
         # App description
         desc_label = tk.Label(
@@ -815,6 +827,17 @@ class ExilesInstaller:
             wraplength=400
         )
         desc_label.pack(fill='x', anchor='w', pady=(5, 0))
+        
+        # Game information label  
+        game_info_label = tk.Label(
+            center_section,
+            text=f"🎮 {game_name}",
+            font=('Segoe UI', 8),
+            fg=self.colors['accent_secondary'],
+            bg=self.colors['bg_accent'],
+            anchor='w'
+        )
+        game_info_label.pack(fill='x', anchor='w', pady=(2, 0))
         
         # Right section with status indicator
         right_section = tk.Frame(card_content, bg=self.colors['bg_accent'])
@@ -851,8 +874,10 @@ class ExilesInstaller:
             name_label.configure(bg=self.colors['bg_hover'])
             desc_label.configure(bg=self.colors['bg_hover'])
             status_indicator.configure(bg=self.colors['bg_hover'])
-            if not optional and required_badge is not None:
-                required_badge.configure(bg=self.colors['warning'])
+            category_badge.configure(bg=self.colors['bg_hover'])
+            game_info_label.configure(bg=self.colors['bg_hover'])
+            if required_badge:
+                required_badge.configure(bg=self.colors['bg_hover'])
                 
         def on_leave(event):
             card_frame.configure(bg=self.colors['bg_accent'])
@@ -866,8 +891,10 @@ class ExilesInstaller:
             name_label.configure(bg=self.colors['bg_accent'])
             desc_label.configure(bg=self.colors['bg_accent'])
             status_indicator.configure(bg=self.colors['bg_accent'])
-            if not optional and required_badge is not None:
-                required_badge.configure(bg=self.colors['warning'])
+            category_badge.configure(bg=self.colors['info'])  # Keep original category color
+            game_info_label.configure(bg=self.colors['bg_accent'])
+            if required_badge:
+                required_badge.configure(bg=self.colors['warning'])  # Keep original required color
         
         # Make entire card clickable to toggle selection
         def on_click(event):
@@ -876,7 +903,12 @@ class ExilesInstaller:
         
         # Bind events to all card elements
         widgets_to_bind = [card_frame, card_content, left_section, center_section, right_section, 
-                          name_frame, icon_label, name_label, desc_label, status_indicator]
+                          name_frame, icon_label, name_label, desc_label, status_indicator, 
+                          category_badge, game_info_label]
+        
+        # Add required badge to bind list if it exists
+        if required_badge:
+            widgets_to_bind.append(required_badge)
         
         for widget in widgets_to_bind:
             widget.bind("<Enter>", on_enter)
@@ -1232,6 +1264,49 @@ class ExilesInstaller:
         except Exception as e:
             logger.error(f"Error changing filter: {e}")
     
+    def create_filter_dropdown(self):
+        """Create or recreate the filter dropdown with current game categories"""
+        try:
+            # Remove existing dropdown if it exists
+            if hasattr(self, 'type_dropdown'):
+                self.type_dropdown.destroy()
+            
+            # Get categories from current game's apps
+            apps = self.get_current_game_apps()
+            categories = set()
+            for app in apps:
+                category = app.get('category', 'General')
+                if category:
+                    categories.add(category)
+            
+            # Build filter options
+            base_options = ["All", "Essential", "Optional"]
+            install_type_options = ["GitHub", "Direct Download", "Windows Package", "Web Tools"]
+            category_options = sorted(list(categories))
+            
+            # Combine all options with separators
+            type_options = base_options + ["─────"] + category_options + ["─────"] + install_type_options
+            
+            # Create new dropdown
+            self.type_dropdown = tk.OptionMenu(
+                self.filter_type_frame,
+                self.filter_type_var,
+                *type_options,
+                command=self.on_filter_change
+            )
+            self.type_dropdown.configure(
+                bg=self.colors['bg_primary'],
+                fg=self.colors['text_primary'],
+                activebackground=self.colors['bg_hover'],
+                activeforeground=self.colors['text_primary'],
+                bd=0,
+                relief='flat'
+            )
+            self.type_dropdown.pack(side='left')
+            
+        except Exception as e:
+            logger.error(f"Error creating filter dropdown: {e}")
+
     def on_game_change(self, selected_game_name):
         """Handle game selection changes"""
         try:
@@ -1247,6 +1322,10 @@ class ExilesInstaller:
             
             # Log the game change
             self.log_message(f"◆ Switched to {selected_game_name}", "info")
+            
+            # Update filter dropdown with new game's categories
+            self.filter_type_var.set("All")  # Reset filter
+            self.create_filter_dropdown()
             
             # Refresh the interface
             self.populate_app_cards()
