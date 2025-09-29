@@ -37,9 +37,17 @@
     {
       "id": "EDMC",
       "name": "ED Market Connector",
-      "install_type": "github",
-      "github_repo": "EDCD/EDMarketConnector",
-      "github_asset": "EDMarketConnector",
+      "install_methods": [
+        {
+          "type": "winget",
+          "winget_id": "EDCD.EliteDangerousMarketConnector"
+        },
+        {
+          "type": "github",
+          "github_repo": "EDCD/EDMarketConnector",
+          "github_asset": "EDMarketConnector"
+        }
+      ],
       "optional": false,
       "description": "Essential tool for uploading market data to EDDN",
       "category": "Core Tools",
@@ -49,9 +57,13 @@
     {
       "id": "EDDI",
       "name": "EDDI Voice Response System",
-      "install_type": "github",
-      "github_repo": "EDCD/EDDI",
-      "github_asset": "EDDI.Setup.exe",
+      "install_methods": [
+        {
+          "type": "github",
+          "github_repo": "EDCD/EDDI",
+          "github_asset": "EDDI"
+        }
+      ],
       "optional": true,
       "description": "Voice response system providing spoken information about game events",
       "category": "Voice & Audio",
@@ -60,9 +72,13 @@
     {
       "id": "EDDiscovery",
       "name": "EDDiscovery",
-      "install_type": "github",
-      "github_repo": "EDDiscovery/EDDiscovery",
-      "github_asset": "EDDiscovery.zip",
+      "install_methods": [
+        {
+          "type": "github",
+          "github_repo": "EDDiscovery/EDDiscovery",
+          "github_asset": "EDDiscovery"
+        }
+      ],
       "optional": true,
       "description": "Comprehensive exploration and travel tracking tool",
       "category": "Core Tools",
@@ -77,9 +93,13 @@
     {
       "id": "EDEngineer",
       "name": "EDEngineer",
-      "install_type": "github",
-      "github_repo": "msarilar/EDEngineer",
-      "github_asset": "EDEngineer",
+      "install_methods": [
+        {
+          "type": "github",
+          "github_repo": "msarilar/EDEngineer",
+          "github_asset": "EDEngineer"
+        }
+      ],
       "optional": true,
       "description": "Engineering materials and blueprint tracker",
       "category": "Utilities",
@@ -99,9 +119,13 @@
     {
       "id": "EDMC-Overlay",
       "name": "EDMC Overlay Plugin",
-      "install_type": "github",
-      "github_repo": "inorton/EDMCOverlay",
-      "github_asset": "EDMCOverlay",
+      "install_methods": [
+        {
+          "type": "github",
+          "github_repo": "inorton/EDMCOverlay",
+          "github_asset": "EDMCOverlay"
+        }
+      ],
       "optional": true,
       "description": "Overlay plugin for EDMC to display information in-game",
       "category": "Utilities",
@@ -152,7 +176,7 @@
       "name": "HidHide Device Filter",
       "install_type": "github",
       "github_repo": "nefarius/HidHide",
-      "github_asset": "HidHide"
+      "github_asset": "HidHide",
       "optional": true,
       "description": "Tool for hiding input devices from games",
       "category": "Hardware & Input",
@@ -172,9 +196,13 @@
     {
       "id": "opentrack",
       "name": "OpenTrack Head Tracking",
-      "install_type": "github",
-      "github_repo": "opentrack/opentrack",
-      "github_asset": "opentrack",
+      "install_methods": [
+        {
+          "type": "github",
+          "github_repo": "opentrack/opentrack",
+          "github_asset": "opentrack"
+        }
+      ],
       "optional": true,
       "description": "Free head tracking software for enhanced immersion",
       "category": "Head Tracking",
