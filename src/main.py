@@ -1126,7 +1126,7 @@ class ExilesInstaller:
                 padx=20,
                 cursor='hand2'
             )
-            btn.pack(pady=2)
+            btn.pack(side='left', padx=5)
             
             # Hover effects
             def on_enter(e, button=btn):
