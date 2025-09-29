@@ -1212,23 +1212,11 @@ class ExilesInstaller:
         status_icon_label = tk.Label(
             status_frame,
             text=status_icon,
-            font=('Segoe UI Emoji', 16),
+            font=('Segoe UI Emoji', 18),
             fg=status_color,
             bg=self.colors['bg_accent']
         )
         status_icon_label.pack()
-        
-        # Status text badge
-        status_badge = tk.Label(
-            status_frame,
-            text=status_text,
-            font=('Segoe UI', 7, 'bold'),
-            fg=self.colors['text_primary'],
-            bg=status_color,
-            padx=6,
-            pady=1
-        )
-        status_badge.pack(pady=(2, 0))
         
         # Version information (if available)
         if version_text:
@@ -1249,7 +1237,6 @@ class ExilesInstaller:
             'app': app,
             'status_frame': status_frame,
             'status_icon': status_icon_label,
-            'status_badge': status_badge,
             'version_label': version_label if version_text else None
         }
         
@@ -1304,7 +1291,7 @@ class ExilesInstaller:
         # Bind events to all card elements
         widgets_to_bind = [card_frame, card_content, left_section, center_section, right_section, 
                           name_frame, icon_label, name_label, desc_label, 
-                          category_badge, game_info_label, status_frame, status_icon_label, status_badge]
+                          category_badge, game_info_label, status_frame, status_icon_label]
         
         # Add required badge and version label to bind list if they exist
         if required_badge:
@@ -3689,9 +3676,6 @@ class ExilesInstaller:
                     # Update the status components if they exist
                     if 'status_icon' in card_data and card_data['status_icon'].winfo_exists():
                         card_data['status_icon'].configure(text=status_icon, fg=status_color)
-                    
-                    if 'status_badge' in card_data and card_data['status_badge'].winfo_exists():
-                        card_data['status_badge'].configure(text=status_text, bg=status_color)
                     
                     if 'version_label' in card_data and card_data['version_label']:
                         if card_data['version_label'].winfo_exists():
