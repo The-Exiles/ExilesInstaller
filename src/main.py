@@ -48,29 +48,33 @@ class ExilesInstaller:
         self.root = tk.Tk()
         self.root.title("Exiles Installer - Elite Dangerous Ecosystem")
         self.root.geometry("1280x1000")
-        self.root.configure(bg='#0a0e13')
+        self.root.configure(bg=self.colors['bg_primary'])
         self.root.minsize(1000, 700)
         
-        # Modern Exiles brand color scheme
+        # Modern Exiles brand color scheme (non-breaking: same keys, brand values)
         self.colors = {
-            'bg_primary': '#0a0e13',       # Deep space black
-            'bg_secondary': '#12181f',     # Card backgrounds
-            'bg_panel': '#1a2028',         # Input/widget backgrounds
-            'bg_accent': '#232b34',        # Subtle accent backgrounds
-            'bg_hover': '#2a3441',         # Hover states
-            'accent_primary': '#e53e3e',   # Modern red (more vibrant)
-            'accent_secondary': '#c53030', # Darker red accent
-            'accent_tertiary': '#9c1c1c',  # Deep red for hover states
-            'accent_glow': '#ff6b6b',      # Bright red for emphasis
-            'text_primary': '#f7fafc',     # Pure white text
-            'text_secondary': '#e2e8f0',   # Light gray text
-            'text_muted': '#a0aec0',       # Muted text
-            'border': '#2d3748',           # Subtle borders
-            'border_accent': '#4a5568',    # Emphasized borders
-            'success': '#38a169',          # Modern green
-            'warning': '#ed8936',          # Modern orange
-            'error': '#e53e3e',            # Modern red
-            'info': '#3182ce'              # Modern blue
+            'bg_primary':    '#0B0F14',  # page background (HUD dark)
+            'bg_secondary':  '#0F1620',  # cards/containers
+            'bg_panel':      '#121821',  # inputs/panels
+            'bg_accent':     '#18202A',  # list rows / subtle accents
+            'bg_hover':      '#1E2935',  # hover states
+
+            'accent_primary':   '#B01515',  # Exiles Red (brand)
+            'accent_secondary': '#8E1111',  # pressed/active
+            'accent_tertiary':  '#E21A1A',  # hover/focus ring
+            'accent_glow':      '#FF3D3D',  # brief pulses/alerts
+
+            'text_primary':   '#E6EEF7',  # main text
+            'text_secondary': '#C7D2DF',  # secondary text
+            'text_muted':     '#9FB3C8',  # captions/hints
+
+            'border':         '#223041',  # subtle borders
+            'border_accent':  '#2E3F55',  # emphasized borders
+
+            'success': '#38B26B',  # status: success
+            'warning': '#ED8936',  # status: warning
+            'error':   '#B01515',  # status: error uses brand red
+            'info':    '#4AB3D4',  # status: info/cyan
         }
         
         # Modern typography system
@@ -194,6 +198,21 @@ class ExilesInstaller:
     def get_current_game_info(self):
         """Get information about the currently selected game"""
         return self.apps_config.get("games", {}).get(self.current_game, {})
+    
+    def get_category_color(self, category):
+        """Get a unique color for each category"""
+        category_colors = {
+            'Core Tools': '#B01515',      # Exiles Red (brand)
+            'Voice & Audio': '#9F7AEA',   # Purple  
+            'Head Tracking': '#38B26B',   # Green
+            'Hardware & Input': '#4AB3D4', # Cyan
+            'Trading': '#ED8936',         # Orange
+            'Ship Building': '#00A3C4',   # Light Blue
+            'Fleet Management': '#E21A1A', # Bright Red
+            'Control Systems': '#6B46C1', # Indigo
+            'Utilities': '#718096',       # Gray
+        }
+        return category_colors.get(category, '#718096')  # Default gray
             
     def setup_ui(self):
         """Setup a visually rich, modern interface"""
@@ -816,7 +835,7 @@ class ExilesInstaller:
             text=category,
             font=('Segoe UI', 8, 'bold'),
             fg=self.colors['text_primary'],
-            bg=self.colors['info'],
+            bg=self.get_category_color(category),
             padx=8,
             pady=2
         )
@@ -912,7 +931,7 @@ class ExilesInstaller:
             name_label.configure(bg=self.colors['bg_accent'])
             desc_label.configure(bg=self.colors['bg_accent'])
             status_indicator.configure(bg=self.colors['bg_accent'])
-            category_badge.configure(bg=self.colors['info'])  # Keep original category color
+            category_badge.configure(bg=self.get_category_color(category))  # Keep original category color
             game_info_label.configure(bg=self.colors['bg_accent'])
             if required_badge:
                 required_badge.configure(bg=self.colors['warning'])  # Keep original required color

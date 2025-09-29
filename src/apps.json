@@ -12,24 +12,24 @@
       "name": "Elite Dangerous",
       "description": "Essential tools for Elite Dangerous commanders",
       "color_theme": {
-        "primary": "#ff8533",
-        "secondary": "#3182ce"
+        "primary": "#B01515",
+        "secondary": "#4AB3D4"
       }
     },
     "star_citizen": {
       "name": "Star Citizen",
       "description": "Essential tools for Star Citizen pilots",
       "color_theme": {
-        "primary": "#1e90ff",
-        "secondary": "#ff6b35"
+        "primary": "#B01515",
+        "secondary": "#5CC8FF"
       }
     },
     "eve_online": {
       "name": "EVE Online",
       "description": "Essential tools for EVE Online capsuleers",
       "color_theme": {
-        "primary": "#ffd700",
-        "secondary": "#8b0000"
+        "primary": "#B01515",
+        "secondary": "#FFD700"
       }
     }
   },
