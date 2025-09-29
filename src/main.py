@@ -67,6 +67,7 @@ class ExilesInstaller:
         self.fonts = {
             'heading': ('Segoe UI', 24, 'bold'),       # Large headings
             'subheading': ('Segoe UI', 18, 'bold'),    # Section headings  
+            'ui': ('Segoe UI', 12, 'normal'),          # Standard UI elements
             'ui_large': ('Segoe UI', 14, 'bold'),      # Large UI elements
             'ui_medium': ('Segoe UI', 12, 'normal'),   # Standard UI elements
             'ui_small': ('Segoe UI', 10, 'normal'),    # Small UI elements

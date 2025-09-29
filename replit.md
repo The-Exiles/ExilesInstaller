@@ -1,12 +1,12 @@
-# Exiles Installer - COMPLETED
+# Exiles Installer - Multi-Game Ecosystem
 
 ## Overview
 
-Exiles Installer is a comprehensive desktop application for the Elite Dangerous gaming community that automates the installation of third-party tools, utilities, and hardware drivers. Built with Python and Tkinter, it provides a centralized solution for installing the entire Elite Dangerous ecosystem including market connectors, exploration tools, voice response systems, joystick software, head tracking applications, and various hardware manufacturer utilities.
+Exiles Installer is a comprehensive desktop application for gaming communities that automates the installation of third-party tools, utilities, and hardware drivers. Built with Python and Tkinter, it provides a centralized solution for installing gaming ecosystems including market connectors, exploration tools, voice response systems, joystick software, head tracking applications, and various hardware manufacturer utilities.
 
-**PROJECT STATUS: COMPLETE** - The application is fully functional with dark spaceship HUD interface, comprehensive installation handlers, streaming downloads with checksum validation, and complete PyInstaller packaging. Ready for Windows deployment.
+**PROJECT STATUS: EXPANDING** - The application is expanding from Elite Dangerous to support multiple gaming ecosystems including Star Citizen and EVE Online. The core infrastructure is complete with dark spaceship HUD interface, comprehensive installation handlers, streaming downloads with checksum validation, and complete PyInstaller packaging.
 
-The installer features a modern GUI with Elite Dangerous theming, supports multiple installation methods (GitHub releases, direct downloads, Windows package managers), and includes automated post-installation configuration steps. It's designed to streamline the complex process of setting up the numerous tools that enhance the Elite Dangerous gaming experience.
+The installer features a modern GUI with space-themed design, supports multiple installation methods (GitHub releases, direct downloads, Windows package managers), and includes automated post-installation configuration steps. It's designed to streamline the complex process of setting up the numerous tools that enhance space simulation gaming experiences across multiple titles.
 
 ## User Preferences
 
@@ -63,3 +63,73 @@ The installer manages applications across several categories:
 - **Hardware Control**: Joystick Gremlin, HidHide, vJoy for input device management
 - **Head Tracking**: OpenTrack, TrackIR, Tobii Game Hub for immersive head movement
 - **Manufacturer Software**: VIRPIL VPC, VKB DevCfg, Thrustmaster TARGET for specific hardware brands
+
+## Multi-Game Research & Expansion
+
+### Star Citizen Tool Ecosystem (Research Completed 2024)
+
+#### Trading & Economy Tools
+- **SC Trade Tools** (sc-trade.tools) - Primary trade route optimization platform with mobile app
+- **UEX Corp** (uexcorp.space) - Comprehensive trading, mining, and marketplace data
+- **Galactic Logistics** (gallog.co) - Visual route planning with starmap integration
+- **VerseMate** - Interactive trade planning with ship size filtering
+
+#### Ship Building & Combat
+- **Erkul Games** (erkul.games) - Ship loadout builder and DPS calculator (community standard)
+- **Hardpoint.io** - Ship fitting comparison tool
+- **Subliminal Loadouts** (subliminal.gg) - Curated ship builds for different gameplay styles
+- **Spviewer** - Detailed ship comparison and analysis
+
+#### Fleet & Organization Management
+- **CCU Game** (ccugame.app) - Ship upgrade chain optimization and fleet planning
+- **FleetYards.net** - Ship database and fleet management
+- **MyFleet.space** - Organization fleet tracking (verification required)
+- **SC Org.Tools** (scorg.tools) - Complete organizational suite with event management
+
+#### Mobile & Specialized Apps
+- **GameGlass** - iOS/Android touchscreen controls for Star Citizen
+- **Star Citizen Assistant** - Mobile ship dashboard and control interface
+- **VerseGuide** - Personal travel guide with planetary information
+- **Universal Item Finder** - Equipment location and pricing search
+
+#### Navigation & Resources
+- **Star Citizen Wiki** (starcitizen.tools) - Comprehensive game information database
+- **SnarePlan** - Quantum interdiction planning tool
+- **ATMO Esports** (atmo.gg) - Competitive gaming platform for tournaments
+
+### EVE Online Tool Ecosystem (Research Completed 2024)
+
+#### Fitting & Ship Tools
+- **PYFA** (Python Fitting Assistant) - Primary fitting tool (GitHub: pyfa-org/Pyfa)
+  - Cross-platform, actively maintained replacement for deprecated EFT
+  - Character skill simulation, fleet booster effects, damage pattern testing
+- **EVEShip.fit** - Web-based fitting tool for sharing fits online
+- **Theorycrafter** - Next-generation fitting tool (fast, ergonomic interface)
+- **EVE Workbench** - Web-based fitting browsing with market integration
+
+#### Fleet Management & Mapping
+- **Pathfinder** - Wormhole mapping tool (community forks active, original discontinued)
+  - MonoliYoda's Fork and Goryn-clade Fork (v2.2.4, April 2024)
+  - Public instances: pathfinder.ashharrison.co.uk, pathfinder-eve.space
+- **RIFT Intel Fusion Tool** - Advanced intel and mapping
+- **IntelWalker** - Intel monitoring and early warning system
+- **Alliance Auth** - Corporation/alliance management platform
+
+#### Industrial & Market Tools
+- **EVE Guru** (eveguru.online) - Manufacturing planner with profitability optimization (Updated Oct 2024)
+- **Ravworks** (ravworks.com) - Free market and industry tool with invention analysis
+- **Fuzzwork Blueprint Calculator** (fuzzwork.co.uk) - Comprehensive manufacturing suite
+- **EVE Tycoon** (evetycoon.com) - Profit tracking across multiple characters
+- **EVE Online Industry Calculator** - T1/T2/T3/capital manufacturing calculator
+
+#### Specialized Applications
+- **GESI** - Google Sheets ESI integration for data analysis
+- **Neucore** - Alliance management with ESI proxy
+- **JitaCalendar** - Fleet scheduling with ESI integration
+- **EVE Buddy** - Multi-platform companion app (Windows/Linux/macOS)
+
+#### Technical Infrastructure
+- **ESI (EVE Swagger Interface)** - Official API with improved reliability in 2024
+  - Rate limiting implementation, reduced 5xx errors to 1 in 10,000 requests
+  - Enhanced stability with better timeout handling
+- **CCP SSO Authentication** - Secure login without storing credentials
