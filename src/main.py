@@ -483,9 +483,8 @@ class ExilesInstaller:
         list_container.pack(fill='both', expand=True, padx=20, pady=20)
         
         # Search/filter section  
-        filter_section = tk.Frame(list_container, bg=self.colors['bg_panel'], height=90)
+        filter_section = tk.Frame(list_container, bg=self.colors['bg_panel'])
         filter_section.pack(fill='x', pady=(0, 15))
-        filter_section.pack_propagate(False)
         
         filter_content = tk.Frame(filter_section, bg=self.colors['bg_panel'])
         filter_content.pack(expand=True, fill='both', padx=20, pady=10)
