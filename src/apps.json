@@ -197,6 +197,7 @@
         }
       ],
       "optional": true,
+      "requires_admin": true,
       "description": "Tool for hiding input devices from games",
       "category": "Hardware & Input",
       "games": ["elite_dangerous", "star_citizen", "eve_online"]
@@ -212,6 +213,7 @@
         }
       ],
       "optional": true,
+      "requires_admin": true,
       "description": "Virtual joystick driver for advanced HOTAS setups",
       "category": "Hardware & Input",
       "games": ["elite_dangerous", "star_citizen", "eve_online"]
@@ -309,6 +311,7 @@
         }
       ],
       "optional": true,
+      "requires_admin": true,
       "description": "Automation scripting language for Windows",
       "category": "Utilities",
       "games": ["elite_dangerous", "star_citizen", "eve_online"]

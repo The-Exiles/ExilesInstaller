@@ -21,6 +21,15 @@ from datetime import datetime
 import webbrowser
 import re
 import hashlib
+import platform
+
+# Windows-specific imports for privilege handling
+if platform.system() == "Windows":
+    try:
+        import ctypes
+        import ctypes.wintypes
+    except ImportError:
+        ctypes = None
 
 # Configure logging
 logging.basicConfig(
@@ -114,9 +123,223 @@ class ExilesInstaller:
         
         self.setup_ui()
         
+        # Initialize privilege handling
+        self.is_admin = self.check_admin_privileges()
+        
         # Defer update checking until after UI is shown to improve startup speed
         if self.settings.get('auto_check_updates', True):
             self.root.after(2000, self.check_for_updates_async)  # Check after 2 seconds
+    
+    def check_admin_privileges(self):
+        """Check if the current process is running with administrator privileges"""
+        if platform.system() != "Windows":
+            return True  # Non-Windows systems don't have UAC
+        
+        if ctypes is None:
+            logger.warning("Could not import ctypes for privilege checking")
+            return False
+        
+        try:
+            return ctypes.windll.shell32.IsUserAnAdmin() != 0
+        except Exception as e:
+            logger.warning(f"Could not check admin privileges: {e}")
+            return False
+    
+    def requires_admin_privileges(self, app):
+        """Check if an application requires administrator privileges"""
+        app_id = app.get('id', '')
+        
+        # Apps that typically require admin privileges
+        admin_required_apps = {
+            'vJoy': 'Virtual joystick driver installation',
+            'HidHide': 'Device filter driver installation', 
+            'AutoHotkey': 'System automation tool',
+            'VKBDevCfg': 'Hardware driver configuration',
+            'VIRPIL-VPC': 'Hardware driver configuration',
+            'TARGET': 'Hardware driver configuration',
+            'TrackIR': 'Hardware driver installation',
+            'TobiiGameHub': 'Eye tracking driver installation'
+        }
+        
+        # Check if app is explicitly marked as requiring admin
+        if app.get('requires_admin', False):
+            return True
+        
+        # Check if app is in known admin-required list
+        if app_id in admin_required_apps:
+            return True
+        
+        # Check install methods for admin requirements
+        install_methods = app.get('install_methods', [])
+        for method in install_methods:
+            if method.get('type') == 'winget':
+                # Many winget packages require admin
+                return True
+            if method.get('type') in ['msi', 'exe']:
+                # Most MSI and many EXE installers require admin
+                return True
+        
+        # Legacy install_type check
+        install_type = app.get('install_type', '')
+        if install_type in ['msi', 'winget']:
+            return True
+        
+        return False
+    
+    def run_elevated_process(self, cmd, app_name):
+        """Run a process with elevated privileges using UAC and wait for completion"""
+        if platform.system() != "Windows":
+            # On non-Windows, just run normally
+            return subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+        
+        try:
+            # Use Windows ShellExecuteEx with process handle to wait for completion
+            if isinstance(cmd, list):
+                executable = cmd[0]
+                params = ' '.join(f'"{arg}"' if ' ' in arg else arg for arg in cmd[1:])
+            else:
+                executable = cmd
+                params = ""
+            
+            self.log_message(f"🔐 Requesting administrator privileges for {app_name}...", "warning")
+            
+            if ctypes is not None:
+                # Define SHELLEXECUTEINFO structure
+                class SHELLEXECUTEINFO(ctypes.Structure):
+                    _fields_ = [
+                        ('cbSize', ctypes.wintypes.DWORD),
+                        ('fMask', ctypes.wintypes.ULONG),
+                        ('hwnd', ctypes.wintypes.HWND),
+                        ('lpVerb', ctypes.wintypes.LPCWSTR),
+                        ('lpFile', ctypes.wintypes.LPCWSTR),
+                        ('lpParameters', ctypes.wintypes.LPCWSTR),
+                        ('lpDirectory', ctypes.wintypes.LPCWSTR),
+                        ('nShow', ctypes.c_int),
+                        ('hInstApp', ctypes.wintypes.HINSTANCE),
+                        ('lpIDList', ctypes.c_void_p),
+                        ('lpClass', ctypes.wintypes.LPCWSTR),
+                        ('hkeyClass', ctypes.wintypes.HKEY),
+                        ('dwHotKey', ctypes.wintypes.DWORD),
+                        ('hIcon', ctypes.wintypes.HANDLE),
+                        ('hProcess', ctypes.wintypes.HANDLE)
+                    ]
+                
+                # Constants
+                SEE_MASK_NOCLOSEPROCESS = 0x00000040
+                SW_HIDE = 0
+                INFINITE = 0xFFFFFFFF
+                
+                # Prepare SHELLEXECUTEINFO structure
+                sei = SHELLEXECUTEINFO()
+                sei.cbSize = ctypes.sizeof(SHELLEXECUTEINFO)
+                sei.fMask = SEE_MASK_NOCLOSEPROCESS
+                sei.hwnd = None
+                sei.lpVerb = "runas"
+                sei.lpFile = executable
+                sei.lpParameters = params
+                sei.lpDirectory = None
+                sei.nShow = SW_HIDE  # Run hidden
+                sei.hInstApp = None
+                sei.hProcess = None
+                
+                # Execute with elevation
+                success = ctypes.windll.shell32.ShellExecuteExW(ctypes.byref(sei))
+                
+                if success and sei.hProcess:
+                    self.log_message(f"🔐 Administrator privileges granted for {app_name}, waiting for completion...", "info")
+                    
+                    # Wait for the process to complete (with timeout)
+                    wait_result = ctypes.windll.kernel32.WaitForSingleObject(sei.hProcess, 600000)  # 10 minutes timeout
+                    
+                    if wait_result == 0:  # WAIT_OBJECT_0 - success
+                        # Get exit code
+                        exit_code = ctypes.wintypes.DWORD()
+                        ctypes.windll.kernel32.GetExitCodeProcess(sei.hProcess, ctypes.byref(exit_code))
+                        
+                        # Close process handle
+                        ctypes.windll.kernel32.CloseHandle(sei.hProcess)
+                        
+                        if exit_code.value == 0:
+                            self.log_message(f"✅ {app_name} installed successfully with administrator privileges", "success")
+                        else:
+                            self.log_message(f"❌ {app_name} installation failed (exit code: {exit_code.value})", "error")
+                        
+                        # Return real result
+                        class ElevatedResult:
+                            def __init__(self, return_code):
+                                self.returncode = return_code
+                                self.stdout = ""  # Can't capture stdout from elevated process
+                                self.stderr = "" if return_code == 0 else f"Process exited with code {return_code}"
+                        
+                        return ElevatedResult(exit_code.value)
+                    
+                    elif wait_result == 258:  # WAIT_TIMEOUT
+                        self.log_message(f"⏱️ {app_name} installation timed out", "error")
+                        ctypes.windll.kernel32.TerminateProcess(sei.hProcess, 1)
+                        ctypes.windll.kernel32.CloseHandle(sei.hProcess)
+                        
+                        class ElevatedResult:
+                            def __init__(self):
+                                self.returncode = 1
+                                self.stdout = ""
+                                self.stderr = "Installation timed out"
+                        return ElevatedResult()
+                    
+                    else:
+                        self.log_message(f"❌ Error waiting for {app_name} installation", "error")
+                        ctypes.windll.kernel32.CloseHandle(sei.hProcess)
+                        
+                        class ElevatedResult:
+                            def __init__(self):
+                                self.returncode = 1
+                                self.stdout = ""
+                                self.stderr = "Error waiting for process completion"
+                        return ElevatedResult()
+                
+                else:
+                    self.log_message(f"❌ Administrator privileges denied or failed for {app_name}", "error")
+                    
+                    class ElevatedResult:
+                        def __init__(self):
+                            self.returncode = 1
+                            self.stdout = ""
+                            self.stderr = "User denied administrator privileges or elevation failed"
+                    return ElevatedResult()
+            
+            else:
+                # Fallback: run normally if ctypes not available
+                self.log_message("⚠️ ctypes not available, running without elevation", "warning")
+                return subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+                
+        except Exception as e:
+            self.log_message(f"❌ Failed to run elevated process: {str(e)}", "error")
+            
+            class ElevatedResult:
+                def __init__(self, error_msg):
+                    self.returncode = 1
+                    self.stdout = ""
+                    self.stderr = error_msg
+            return ElevatedResult(str(e))
+    
+    def get_privilege_status_text(self):
+        """Get text describing current privilege status"""
+        if platform.system() != "Windows":
+            return "🐧 Linux Environment"
+        
+        if self.is_admin:
+            return "🔐 Administrator"
+        else:
+            return "👤 Standard User"
+    
+    def get_privilege_status_color(self):
+        """Get color for privilege status"""
+        if platform.system() != "Windows":
+            return self.colors['info']
+        
+        if self.is_admin:
+            return self.colors['success']
+        else:
+            return self.colors['warning']
         
     def load_apps_config(self):
         """Load applications configuration from apps.json with multi-game support"""
@@ -355,6 +578,30 @@ class ExilesInstaller:
             bg=self.colors['bg_secondary']
         )
         subtitle_label.pack(pady=(5, 0))
+        
+        # Privilege status indicator
+        privilege_status_frame = tk.Frame(subtitle_frame, bg=self.colors['bg_secondary'])
+        privilege_status_frame.pack(pady=(3, 0))
+        
+        privilege_status_label = tk.Label(
+            privilege_status_frame,
+            text=self.get_privilege_status_text(),
+            font=('Segoe UI', 10, 'bold'),
+            fg=self.get_privilege_status_color(),
+            bg=self.colors['bg_secondary']
+        )
+        privilege_status_label.pack()
+        
+        # Add admin warning if not admin on Windows
+        if platform.system() == "Windows" and not self.is_admin:
+            warning_label = tk.Label(
+                privilege_status_frame,
+                text="⚠️ Some apps may require running as Administrator",
+                font=('Segoe UI', 9),
+                fg=self.colors['warning'],
+                bg=self.colors['bg_secondary']
+            )
+            warning_label.pack(pady=(2, 0))
         
     def create_header_graphics(self, parent):
         """Add visual graphics to header"""
@@ -855,6 +1102,19 @@ class ExilesInstaller:
                 pady=2
             )
             required_badge.pack(side='left', padx=(5, 0))
+        
+        # Admin privilege badge
+        if self.requires_admin_privileges(app):
+            admin_badge = tk.Label(
+                name_frame,
+                text="🔐 ADMIN",
+                font=('Segoe UI', 8, 'bold'),
+                fg=self.colors['text_primary'],
+                bg=self.colors['error'],
+                padx=8,
+                pady=2
+            )
+            admin_badge.pack(side='left', padx=(5, 0))
         
         # App description
         desc_label = tk.Label(
@@ -1760,11 +2020,18 @@ class ExilesInstaller:
             self.log_message("No winget ID specified", "error")
             return False
             
+        app_name = app.get('name', 'Unknown')
         self.log_message(f"Installing via winget: {winget_id}", "info")
         
         try:
             cmd = ['winget', 'install', '--id', winget_id, '--silent', '--accept-package-agreements', '--accept-source-agreements']
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
+            
+            # Check if admin privileges are required for winget
+            if self.requires_admin_privileges(app) and not self.is_admin:
+                self.log_message(f"⚠️ {app_name} requires administrator privileges for winget installation", "warning")
+                result = self.run_elevated_process(cmd, app_name)
+            else:
+                result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
             
             if result.returncode == 0:
                 self.log_message("Winget installation completed", "success")
@@ -2075,14 +2342,20 @@ class ExilesInstaller:
     def run_installer(self, file_path, app):
         """Run an executable installer"""
         try:
+            app_name = app.get('name', 'Unknown')
             self.log_message(f"Running installer: {file_path.name}", "info")
             
             if file_path.suffix.lower() == '.msi':
                 cmd = ['msiexec', '/i', str(file_path), '/quiet', '/norestart']
             else:
                 cmd = [str(file_path), '/S']  # Common silent install flag
-                
-            result = subprocess.run(cmd, timeout=600, capture_output=True, text=True)
+            
+            # Check if admin privileges are required
+            if self.requires_admin_privileges(app) and not self.is_admin:
+                self.log_message(f"⚠️ {app_name} requires administrator privileges", "warning")
+                result = self.run_elevated_process(cmd, app_name)
+            else:
+                result = subprocess.run(cmd, timeout=600, capture_output=True, text=True)
             
             if result.returncode == 0:
                 self.log_message("Installation completed successfully", "success")
