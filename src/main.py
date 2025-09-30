@@ -32,11 +32,41 @@ if platform.system() == "Windows":
         ctypes = None
 
 # Configure logging
+def _app_base_dir() -> Path:
+    """
+    ? note: Resolve the base directory for resources.
+      - Dev mode: directory of this file
+      - PyInstaller onefile: sys._MEIPASS (temp)
+      - PyInstaller onedir: parent of the executable
+    """
+    # PyInstaller sets sys.frozen = True
+    if getattr(sys, "frozen", False):
+        # Onefile uses _MEIPASS; onedir does not
+        if hasattr(sys, "_MEIPASS"):
+            return Path(sys._MEIPASS)
+        return Path(sys.executable).resolve().parent
+    # Regular script run
+    return Path(__file__).resolve().parent
+
+def get_resource_path(relative_path: str) -> str:
+    """
+    ? note: Use the base dir above so JSONs/icons load both in dev and frozen modes.
+    """
+    return str(_app_base_dir() / relative_path)
+
+# Configure logging to a user-local folder (not inside the repo or dist folder)
+if os.name == "nt":
+    _LOG_DIR = Path.home() / "AppData/Local/ExilesInstaller/logs"
+else:
+    _LOG_DIR = Path.home() / ".exiles_installer/logs"
+_LOG_DIR.mkdir(parents=True, exist_ok=True)
+_LOG_FILE = _LOG_DIR / "exiles_installer.log"
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('exiles_installer.log'),
+        logging.FileHandler(_LOG_FILE, encoding='utf-8'),
         logging.StreamHandler()
     ]
 )
@@ -49,7 +79,7 @@ def get_resource_path(relative_path):
         base_path = sys._MEIPASS
     except Exception:
         base_path = os.path.abspath(".")
-    
+
     return os.path.join(base_path, relative_path)
 
 class ExilesInstaller:
@@ -79,17 +109,17 @@ class ExilesInstaller:
             'error':   '#B01515',  # status: error uses brand red
             'info':    '#4AB3D4',  # status: info/cyan
         }
-        
+
         self.root = tk.Tk()
         self.root.title("Exiles Installer - Elite Dangerous Ecosystem")
         self.root.geometry("1280x1000")
         self.root.configure(bg=self.colors['bg_primary'])
         self.root.minsize(1000, 700)
-        
+
         # Modern typography system
         self.fonts = {
             'heading': ('Segoe UI', 24, 'bold'),       # Large headings
-            'subheading': ('Segoe UI', 18, 'bold'),    # Section headings  
+            'subheading': ('Segoe UI', 18, 'bold'),    # Section headings
             'ui': ('Segoe UI', 12, 'normal'),          # Standard UI elements
             'ui_large': ('Segoe UI', 14, 'bold'),      # Large UI elements
             'ui_medium': ('Segoe UI', 12, 'normal'),   # Standard UI elements
@@ -99,23 +129,23 @@ class ExilesInstaller:
             'button': ('Segoe UI', 12, 'bold'),        # Button text
             'caption': ('Segoe UI', 9, 'normal')       # Small captions
         }
-        
+
         # Load apps configuration
         self.apps_config = self.load_apps_config()
         self.selected_apps = set()
-        
+
         # Installation state tracking
         self.installation_state_file = os.path.join(os.path.expanduser('~'), '.exiles_installer_state.json')
         self.installation_states = self.load_installation_states()
-        
+
         # Multi-game support
         self.current_game = "elite_dangerous"  # Default game
         self.supported_games = self.get_supported_games()
         self.installation_progress = {}
-        
+
         # Load settings from config file
         self.settings = self.load_settings()
-        
+
         # Update checking configuration - Exiles Downloads site
         base_url = self.settings.get('update_server', 'https://downloads.exiles.one').rstrip('/')
         self.update_config = {
@@ -124,45 +154,45 @@ class ExilesInstaller:
             'apps_url': f'{base_url}/api/apps.json',
             'current_version': '1.0.0'
         }
-        
+
         # Initialize privilege handling
         self.is_admin = self.check_admin_privileges()
-        
+
         # Initialize status tracking (before UI setup)
         self.app_statuses = {}
-        
+
         self.setup_ui()
-        
+
         # Defer update checking until after UI is shown to improve startup speed
         if self.settings.get('auto_check_updates', True):
             self.root.after(2000, self.check_for_updates_async)  # Check after 2 seconds
-            
+
         # Start app status detection after UI loads
         self.root.after(3000, self.update_app_statuses_async)  # Check app statuses after 3 seconds
-    
+
     def check_admin_privileges(self):
         """Check if the current process is running with administrator privileges"""
         if platform.system() != "Windows":
             return True  # Non-Windows systems don't have UAC
-        
+
         if ctypes is None:
             logger.warning("Could not import ctypes for privilege checking")
             return False
-        
+
         try:
             return ctypes.windll.shell32.IsUserAnAdmin() != 0
         except Exception as e:
             logger.warning(f"Could not check admin privileges: {e}")
             return False
-    
+
     def requires_admin_privileges(self, app):
         """Check if an application requires administrator privileges"""
         app_id = app.get('id', '')
-        
+
         # Apps that typically require admin privileges
         admin_required_apps = {
             'vJoy': 'Virtual joystick driver installation',
-            'HidHide': 'Device filter driver installation', 
+            'HidHide': 'Device filter driver installation',
             'AutoHotkey': 'System automation tool',
             'VKBDevCfg': 'Hardware driver configuration',
             'VIRPIL-VPC': 'Hardware driver configuration',
@@ -170,15 +200,15 @@ class ExilesInstaller:
             'TrackIR': 'Hardware driver installation',
             'TobiiGameHub': 'Eye tracking driver installation'
         }
-        
+
         # Check if app is explicitly marked as requiring admin
         if app.get('requires_admin', False):
             return True
-        
+
         # Check if app is in known admin-required list
         if app_id in admin_required_apps:
             return True
-        
+
         # Check install methods for admin requirements
         install_methods = app.get('install_methods', [])
         for method in install_methods:
@@ -188,20 +218,20 @@ class ExilesInstaller:
             if method.get('type') in ['msi', 'exe']:
                 # Most MSI and many EXE installers require admin
                 return True
-        
+
         # Legacy install_type check
         install_type = app.get('install_type', '')
         if install_type in ['msi', 'winget']:
             return True
-        
+
         return False
-    
+
     def run_elevated_process(self, cmd, app_name):
         """Run a process with elevated privileges using UAC and wait for completion"""
         if platform.system() != "Windows":
             # On non-Windows, just run normally
             return subprocess.run(cmd, capture_output=True, text=True, timeout=600)
-        
+
         try:
             # Use Windows ShellExecuteEx with process handle to wait for completion
             if isinstance(cmd, list):
@@ -210,9 +240,9 @@ class ExilesInstaller:
             else:
                 executable = cmd
                 params = ""
-            
+
             self.log_message(f"🔐 Requesting administrator privileges for {app_name}...", "warning")
-            
+
             if ctypes is not None:
                 # Define SHELLEXECUTEINFO structure
                 class SHELLEXECUTEINFO(ctypes.Structure):
@@ -233,12 +263,12 @@ class ExilesInstaller:
                         ('hIcon', ctypes.wintypes.HANDLE),
                         ('hProcess', ctypes.wintypes.HANDLE)
                     ]
-                
+
                 # Constants
                 SEE_MASK_NOCLOSEPROCESS = 0x00000040
                 SW_HIDE = 0
                 INFINITE = 0xFFFFFFFF
-                
+
                 # Prepare SHELLEXECUTEINFO structure
                 sei = SHELLEXECUTEINFO()
                 sei.cbSize = ctypes.sizeof(SHELLEXECUTEINFO)
@@ -251,106 +281,106 @@ class ExilesInstaller:
                 sei.nShow = SW_HIDE  # Run hidden
                 sei.hInstApp = None
                 sei.hProcess = None
-                
+
                 # Execute with elevation
                 success = ctypes.windll.shell32.ShellExecuteExW(ctypes.byref(sei))
-                
+
                 if success and sei.hProcess:
                     self.log_message(f"🔐 Administrator privileges granted for {app_name}, waiting for completion...", "info")
-                    
+
                     # Wait for the process to complete (with timeout)
                     wait_result = ctypes.windll.kernel32.WaitForSingleObject(sei.hProcess, 600000)  # 10 minutes timeout
-                    
+
                     if wait_result == 0:  # WAIT_OBJECT_0 - success
                         # Get exit code
                         exit_code = ctypes.wintypes.DWORD()
                         ctypes.windll.kernel32.GetExitCodeProcess(sei.hProcess, ctypes.byref(exit_code))
-                        
+
                         # Close process handle
                         ctypes.windll.kernel32.CloseHandle(sei.hProcess)
-                        
+
                         if exit_code.value == 0:
                             self.log_message(f"✅ {app_name} installed successfully with administrator privileges", "success")
                         else:
                             self.log_message(f"❌ {app_name} installation failed (exit code: {exit_code.value})", "error")
-                        
+
                         # Return real result
                         class ElevatedResult:
                             def __init__(self, return_code):
                                 self.returncode = return_code
                                 self.stdout = ""  # Can't capture stdout from elevated process
                                 self.stderr = "" if return_code == 0 else f"Process exited with code {return_code}"
-                        
+
                         return ElevatedResult(exit_code.value)
-                    
+
                     elif wait_result == 258:  # WAIT_TIMEOUT
                         self.log_message(f"⏱️ {app_name} installation timed out", "error")
                         ctypes.windll.kernel32.TerminateProcess(sei.hProcess, 1)
                         ctypes.windll.kernel32.CloseHandle(sei.hProcess)
-                        
+
                         class ElevatedResult:
                             def __init__(self):
                                 self.returncode = 1
                                 self.stdout = ""
                                 self.stderr = "Installation timed out"
                         return ElevatedResult()
-                    
+
                     else:
                         self.log_message(f"❌ Error waiting for {app_name} installation", "error")
                         ctypes.windll.kernel32.CloseHandle(sei.hProcess)
-                        
+
                         class ElevatedResult:
                             def __init__(self):
                                 self.returncode = 1
                                 self.stdout = ""
                                 self.stderr = "Error waiting for process completion"
                         return ElevatedResult()
-                
+
                 else:
                     self.log_message(f"❌ Administrator privileges denied or failed for {app_name}", "error")
-                    
+
                     class ElevatedResult:
                         def __init__(self):
                             self.returncode = 1
                             self.stdout = ""
                             self.stderr = "User denied administrator privileges or elevation failed"
                     return ElevatedResult()
-            
+
             else:
                 # Fallback: run normally if ctypes not available
                 self.log_message("⚠️ ctypes not available, running without elevation", "warning")
                 return subprocess.run(cmd, capture_output=True, text=True, timeout=600)
-                
+
         except Exception as e:
             self.log_message(f"❌ Failed to run elevated process: {str(e)}", "error")
-            
+
             class ElevatedResult:
                 def __init__(self, error_msg):
                     self.returncode = 1
                     self.stdout = ""
                     self.stderr = error_msg
             return ElevatedResult(str(e))
-    
+
     def get_privilege_status_text(self):
         """Get text describing current privilege status"""
         if platform.system() != "Windows":
             return "🐧 Linux Environment"
-        
+
         if self.is_admin:
             return "🔐 Administrator"
         else:
             return "👤 Standard User"
-    
+
     def get_privilege_status_color(self):
         """Get color for privilege status"""
         if platform.system() != "Windows":
             return self.colors['info']
-        
+
         if self.is_admin:
             return self.colors['success']
         else:
             return self.colors['warning']
-        
+
     def load_apps_config(self):
         """Load applications configuration from apps.json with multi-game support"""
         # Try multiple locations for apps.json
@@ -359,10 +389,10 @@ class ExilesInstaller:
             'apps.json',  # Development path
             'src/apps.json',  # Alternative development path
         ]
-        
+
         config = None
         apps_path = None
-        
+
         for path in possible_paths:
             try:
                 if os.path.exists(path):
@@ -374,13 +404,13 @@ class ExilesInstaller:
             except (FileNotFoundError, json.JSONDecodeError) as e:
                 logger.debug(f"Could not load from {path}: {e}")
                 continue
-        
+
         if config is None:
             logger.error("apps.json not found in any expected location")
-            messagebox.showerror("Error", 
+            messagebox.showerror("Error",
                 "Configuration file not found. Please ensure apps.json is in the same directory as the installer.")
             return {"metadata": {}, "games": {"elite_dangerous": {"apps": []}}}
-        
+
         try:
             # Check if this is the new multi-game format
             if "games" in config:
@@ -388,23 +418,23 @@ class ExilesInstaller:
                 if "apps" in config and config["apps"]:
                     flat_apps = config["apps"]
                     games_config = config.get("games", {})
-                    
+
                     # Organize apps by game
                     for game_id in games_config.keys():
                         games_config[game_id]["apps"] = []
-                    
+
                     # Distribute apps to their respective games
                     for app in flat_apps:
                         app_games = app.get("games", [])
                         for game_id in app_games:
                             if game_id in games_config:
                                 games_config[game_id]["apps"].append(app)
-                    
+
                     # Update config with organized structure
                     config["games"] = games_config
-                
+
                 return config
-            
+
             # Convert old format to new format for backward compatibility
             logger.info("Converting legacy apps.json format to multi-game format")
             new_config = {
@@ -422,40 +452,40 @@ class ExilesInstaller:
                 }
             }
             return new_config
-            
+
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON in {apps_path}: {e}")
             messagebox.showerror("Error", f"Invalid JSON in configuration file: {e}")
             return {"metadata": {}, "games": {"elite_dangerous": {"apps": []}}}
-    
+
     def get_supported_games(self):
         """Get list of supported games from configuration"""
         games = self.apps_config.get("games", {})
-        return [(game_id, game_data.get("name", game_id.title())) 
+        return [(game_id, game_data.get("name", game_id.title()))
                 for game_id, game_data in games.items()]
-    
+
     def get_current_game_apps(self):
         """Get apps for the currently selected game (including multi-game apps)"""
         all_apps = self.apps_config.get("apps", [])
         current_game_apps = []
-        
+
         for app in all_apps:
             # Check if current game is in this app's supported games list
             app_games = app.get("games", [])
             if self.current_game in app_games:
                 current_game_apps.append(app)
-        
+
         return current_game_apps
-    
+
     def get_current_game_info(self):
         """Get information about the currently selected game"""
         return self.apps_config.get("games", {}).get(self.current_game, {})
-    
+
     def get_category_color(self, category):
         """Get a unique color for each category"""
         category_colors = {
             'Core Tools': '#B01515',      # Exiles Red (brand)
-            'Voice & Audio': '#9F7AEA',   # Purple  
+            'Voice & Audio': '#9F7AEA',   # Purple
             'Head Tracking': '#38B26B',   # Green
             'Hardware & Input': '#4AB3D4', # Cyan
             'Trading': '#ED8936',         # Orange
@@ -465,96 +495,96 @@ class ExilesInstaller:
             'Utilities': '#718096',       # Gray
         }
         return category_colors.get(category, '#718096')  # Default gray
-            
+
     def setup_ui(self):
         """Setup a visually rich, modern interface"""
         # Configure window for sleek look
         self.root.configure(bg=self.colors['bg_primary'])
-        
+
         # Create visual background gradient effect
         self.create_background_canvas()
-        
+
         # Main container with sophisticated layout
         main_frame = tk.Frame(self.root, bg=self.colors['bg_primary'])
         main_frame.pack(fill='both', expand=True, padx=0, pady=0)
-        
+
         # Create visual header with graphics
         self.create_visual_header(main_frame)
-        
+
         # Main content with visual cards
         content_frame = tk.Frame(main_frame, bg=self.colors['bg_primary'])
         content_frame.pack(side='top', fill='both', expand=True, padx=30, pady=(20, 10))
-        
+
         # Create visual dashboard layout
         self.create_visual_dashboard(content_frame)
-        
+
         # Create visual control dock
         self.create_visual_control_dock(main_frame)
-        
+
     def create_background_canvas(self):
         """Create a visual background with gradient effect"""
         # Canvas for background effects
         self.bg_canvas = tk.Canvas(
-            self.root, 
+            self.root,
             bg=self.colors['bg_primary'],
             highlightthickness=0
         )
         self.bg_canvas.place(x=0, y=0, relwidth=1, relheight=1)
-        
+
         # Add subtle grid pattern
         self.create_grid_pattern()
-        
+
     def create_grid_pattern(self):
         """Create a subtle grid pattern background"""
         width = 1280
         height = 900
         grid_size = 40
-        
+
         # Draw vertical lines
         for x in range(0, width, grid_size):
             self.bg_canvas.create_line(
                 x, 0, x, height,
-                fill=self.colors['border'], 
+                fill=self.colors['border'],
                 width=1,
                 stipple='gray25'
             )
-            
+
         # Draw horizontal lines
         for y in range(0, height, grid_size):
             self.bg_canvas.create_line(
                 0, y, width, y,
-                fill=self.colors['border'], 
+                fill=self.colors['border'],
                 width=1,
                 stipple='gray25'
             )
-    
+
     def create_visual_header(self, parent):
         """Create a visually rich header with graphics"""
         # Header with visual depth
         header_frame = tk.Frame(parent, bg=self.colors['bg_primary'], height=140)
         header_frame.pack(fill='x', pady=(20, 30))
         header_frame.pack_propagate(False)
-        
+
         # Visual header background
         header_bg = tk.Frame(header_frame, bg=self.colors['bg_secondary'], height=120)
         header_bg.pack(fill='x', padx=20, pady=10)
         header_bg.pack_propagate(False)
-        
+
         # Create visual elements
         self.create_header_graphics(header_bg)
-        
+
         # Title with visual styling
         title_container = tk.Frame(header_bg, bg=self.colors['bg_secondary'])
         title_container.pack(expand=True, fill='both')
-        
+
         # Visual brand elements
         brand_frame = tk.Frame(title_container, bg=self.colors['bg_secondary'])
         brand_frame.pack(pady=20)
-        
+
         # Logo-style text with visual elements
         logo_frame = tk.Frame(brand_frame, bg=self.colors['bg_secondary'])
         logo_frame.pack()
-        
+
         # Left visual accent
         left_accent = tk.Label(
             logo_frame,
@@ -564,7 +594,7 @@ class ExilesInstaller:
             bg=self.colors['bg_secondary']
         )
         left_accent.pack(side='left', padx=(0, 15))
-        
+
         # Main title
         title_label = tk.Label(
             logo_frame,
@@ -574,7 +604,7 @@ class ExilesInstaller:
             bg=self.colors['bg_secondary']
         )
         title_label.pack(side='left')
-        
+
         # Right visual accent
         right_accent = tk.Label(
             logo_frame,
@@ -584,11 +614,11 @@ class ExilesInstaller:
             bg=self.colors['bg_secondary']
         )
         right_accent.pack(side='left', padx=(15, 0))
-        
+
         # Subtitle with visual elements
         subtitle_frame = tk.Frame(brand_frame, bg=self.colors['bg_secondary'])
         subtitle_frame.pack(pady=(10, 0))
-        
+
         # Visual divider
         divider = tk.Label(
             subtitle_frame,
@@ -598,7 +628,7 @@ class ExilesInstaller:
             bg=self.colors['bg_secondary']
         )
         divider.pack()
-        
+
         subtitle_label = tk.Label(
             subtitle_frame,
             text="Elite Dangerous Ecosystem • Automated Deployment System",
@@ -607,11 +637,11 @@ class ExilesInstaller:
             bg=self.colors['bg_secondary']
         )
         subtitle_label.pack(pady=(5, 0))
-        
+
         # Privilege status indicator
         privilege_status_frame = tk.Frame(subtitle_frame, bg=self.colors['bg_secondary'])
         privilege_status_frame.pack(pady=(3, 0))
-        
+
         privilege_status_label = tk.Label(
             privilege_status_frame,
             text=self.get_privilege_status_text(),
@@ -620,7 +650,7 @@ class ExilesInstaller:
             bg=self.colors['bg_secondary']
         )
         privilege_status_label.pack()
-        
+
         # Add admin warning if not admin on Windows
         if platform.system() == "Windows" and not self.is_admin:
             warning_label = tk.Label(
@@ -631,13 +661,13 @@ class ExilesInstaller:
                 bg=self.colors['bg_secondary']
             )
             warning_label.pack(pady=(2, 0))
-        
+
     def create_header_graphics(self, parent):
         """Add visual graphics to header"""
         # Corner decorations
         corners_frame = tk.Frame(parent, bg=self.colors['bg_secondary'])
         corners_frame.pack(fill='x')
-        
+
         # Top-left corner element
         tl_corner = tk.Label(
             corners_frame,
@@ -647,7 +677,7 @@ class ExilesInstaller:
             bg=self.colors['bg_secondary']
         )
         tl_corner.pack(side='left', anchor='nw')
-        
+
         # Top-right corner element
         tr_corner = tk.Label(
             corners_frame,
@@ -657,18 +687,18 @@ class ExilesInstaller:
             bg=self.colors['bg_secondary']
         )
         tr_corner.pack(side='right', anchor='ne')
-        
+
     def create_modern_app_selection_panel(self, parent):
         """Create the modern application selection panel"""
         # Clean left panel
         left_frame = tk.Frame(parent, bg=self.colors['bg_panel'], width=500)
         left_frame.pack(side='left', fill='both', expand=True, padx=(0, 10))
-        
+
         # Panel header with modern styling
         header_frame = tk.Frame(left_frame, bg=self.colors['bg_secondary'], height=45)
         header_frame.pack(fill='x', padx=8, pady=(8, 0))
         header_frame.pack_propagate(False)
-        
+
         title_label = tk.Label(
             header_frame,
             text="◢ APPLICATION SELECTION MATRIX ◣",
@@ -677,11 +707,11 @@ class ExilesInstaller:
             bg=self.colors['bg_secondary']
         )
         title_label.pack(expand=True)
-        
+
         # Filter controls
         filter_frame = tk.Frame(left_frame, bg=self.colors['bg_panel'])
         filter_frame.pack(fill='x', padx=10, pady=(0, 10))
-        
+
         tk.Label(
             filter_frame,
             text="Filter:",
@@ -689,7 +719,7 @@ class ExilesInstaller:
             fg=self.colors['text_primary'],
             bg=self.colors['bg_panel']
         ).pack(side='left')
-        
+
         self.filter_var = tk.StringVar()
         filter_entry = tk.Entry(
             filter_frame,
@@ -701,11 +731,11 @@ class ExilesInstaller:
         )
         filter_entry.pack(side='left', fill='x', expand=True, padx=(10, 0))
         filter_entry.bind('<KeyRelease>', self.filter_apps)
-        
+
         # Apps list with scrollbar
         list_frame = tk.Frame(left_frame, bg=self.colors['bg_panel'])
         list_frame.pack(fill='both', expand=True, padx=10, pady=(0, 10))
-        
+
         self.apps_listbox = tk.Listbox(
             list_frame,
             font=('Consolas', 9),
@@ -716,78 +746,78 @@ class ExilesInstaller:
             activestyle='none',
             selectmode='multiple'
         )
-        
+
         scrollbar = tk.Scrollbar(list_frame, orient='vertical', command=self.apps_listbox.yview)
         self.apps_listbox.configure(yscrollcommand=scrollbar.set)
-        
+
         self.apps_listbox.pack(side='left', fill='both', expand=True)
         scrollbar.pack(side='right', fill='y')
-        
+
         # Populate apps list
         self.populate_apps_list()
-        
+
         # Visual quick selection presets
         self.create_visual_quick_selection(left_frame)
-    
+
     def create_visual_dashboard(self, parent):
         """Create the main visual dashboard"""
         # Dashboard container
         dashboard = tk.Frame(parent, bg=self.colors['bg_primary'])
         dashboard.pack(fill='both', expand=True)
-        
+
         # Create visual cards
         self.create_app_selection_card(dashboard)
         self.create_installation_monitor_card(dashboard)
-        
+
     def create_app_selection_card(self, parent):
         """Create visually rich app selection card"""
         # Left side - App selection
         left_container = tk.Frame(parent, bg=self.colors['bg_primary'])
         left_container.pack(side='left', fill='both', expand=True, padx=(0, 15))
-        
+
         # Card with visual styling
         card = tk.Frame(left_container, bg=self.colors['bg_secondary'])
         card.pack(fill='both', expand=True)
-        
+
         # Card header with visual elements
         self.create_card_header(card, "⬢ APPLICATION MATRIX", "Select tools for deployment")
-        
+
         # Visual app list
         self.create_visual_app_list(card)
-        
+
         # Visual preset buttons
         self.create_visual_presets(card)
-        
+
     def create_installation_monitor_card(self, parent):
         """Create visually rich installation monitor"""
         # Right side - Installation monitor
         right_container = tk.Frame(parent, bg=self.colors['bg_primary'])
         right_container.pack(side='right', fill='both', expand=True)
-        
+
         # Card with visual styling
         card = tk.Frame(right_container, bg=self.colors['bg_secondary'])
         card.pack(fill='both', expand=True)
-        
+
         # Card header
         self.create_card_header(card, "⬢ DEPLOYMENT MONITOR", "Real-time installation status")
-        
+
         # Visual progress display
         self.create_visual_progress_display(card)
-        
+
     def create_card_header(self, parent, title, subtitle):
         """Create a visually rich card header"""
         header_frame = tk.Frame(parent, bg=self.colors['bg_accent'], height=95)
         header_frame.pack(fill='x')
         header_frame.pack_propagate(False)
-        
+
         # Header content
         header_content = tk.Frame(header_frame, bg=self.colors['bg_accent'])
         header_content.pack(expand=True, fill='both', padx=25, pady=12)
-        
+
         # Title with icon
         title_frame = tk.Frame(header_content, bg=self.colors['bg_accent'])
         title_frame.pack(anchor='w')
-        
+
         title_label = tk.Label(
             title_frame,
             text=title,
@@ -796,7 +826,7 @@ class ExilesInstaller:
             bg=self.colors['bg_accent']
         )
         title_label.pack(side='left')
-        
+
         # Subtitle
         subtitle_label = tk.Label(
             header_content,
@@ -806,28 +836,28 @@ class ExilesInstaller:
             bg=self.colors['bg_accent']
         )
         subtitle_label.pack(anchor='w', pady=(3, 0))
-        
+
         # Visual separator
         separator = tk.Frame(parent, bg=self.colors['accent_primary'], height=3)
         separator.pack(fill='x')
-        
+
     def create_visual_app_list(self, parent):
         """Create a modern visual app cards interface"""
         # List container with visual styling
         list_container = tk.Frame(parent, bg=self.colors['bg_secondary'])
         list_container.pack(fill='both', expand=True, padx=20, pady=20)
-        
-        # Search/filter section  
+
+        # Search/filter section
         filter_section = tk.Frame(list_container, bg=self.colors['bg_panel'])
         filter_section.pack(fill='x', pady=(0, 15))
-        
+
         filter_content = tk.Frame(filter_section, bg=self.colors['bg_panel'])
         filter_content.pack(expand=True, fill='both', padx=20, pady=10)
-        
+
         # Search icon and field
         search_frame = tk.Frame(filter_content, bg=self.colors['bg_panel'])
         search_frame.pack(fill='x')
-        
+
         search_icon = tk.Label(
             search_frame,
             text="🔍",
@@ -836,7 +866,7 @@ class ExilesInstaller:
             bg=self.colors['bg_panel']
         )
         search_icon.pack(side='left', padx=(0, 10))
-        
+
         self.filter_var = tk.StringVar()
         search_entry = tk.Entry(
             search_frame,
@@ -850,12 +880,12 @@ class ExilesInstaller:
         )
         search_entry.pack(fill='x', ipady=8)
         search_entry.bind('<KeyRelease>', self.filter_apps)
-        
+
         # Filter dropdown for installation types
         # Game selection dropdown
         game_frame = tk.Frame(filter_content, bg=self.colors['bg_panel'])
         game_frame.pack(fill='x', pady=(10, 0))
-        
+
         game_label = tk.Label(
             game_frame,
             text="Game:",
@@ -864,12 +894,12 @@ class ExilesInstaller:
             bg=self.colors['bg_panel']
         )
         game_label.pack(side='left', padx=(0, 10))
-        
+
         # Get current game name for display
         current_game_name = self.apps_config.get("games", {}).get(self.current_game, {}).get("name", self.current_game)
         self.game_var = tk.StringVar(value=current_game_name)
         game_options = [game_data.get("name", game_id) for game_id, game_data in self.apps_config.get("games", {}).items()]
-        
+
         if game_options:  # Only create dropdown if games are available
             game_dropdown = tk.OptionMenu(
                 game_frame,
@@ -886,7 +916,7 @@ class ExilesInstaller:
                 relief='flat'
             )
             game_dropdown.pack(side='left')
-        
+
         # Category filter dropdown (same row as game)
         category_label = tk.Label(
             game_frame,
@@ -896,17 +926,17 @@ class ExilesInstaller:
             bg=self.colors['bg_panel']
         )
         category_label.pack(side='left', padx=(20, 10))
-        
+
         self.filter_category_var = tk.StringVar(value="All Categories")
-        
+
         # Store reference for dynamic updates
         self.category_frame = game_frame
         self.create_category_dropdown()
-        
+
         # Modern app cards container
         apps_container = tk.Frame(list_container, bg=self.colors['bg_secondary'])
         apps_container.pack(fill='both', expand=True)
-        
+
         # Create scrollable canvas for app cards
         self.apps_canvas = tk.Canvas(
             apps_container,
@@ -914,7 +944,7 @@ class ExilesInstaller:
             highlightthickness=0,
             bd=0
         )
-        
+
         # Scrollbar for app cards
         apps_scrollbar = tk.Scrollbar(
             apps_container,
@@ -924,55 +954,55 @@ class ExilesInstaller:
             troughcolor=self.colors['bg_secondary'],
             activebackground=self.colors['accent_secondary']
         )
-        
+
         # Scrollable frame inside canvas
         self.apps_scroll_frame = tk.Frame(self.apps_canvas, bg=self.colors['bg_secondary'])
-        
+
         # Configure scrolling
         self.apps_canvas.configure(yscrollcommand=apps_scrollbar.set)
         self.apps_canvas_frame = self.apps_canvas.create_window(
-            (0, 0), 
-            window=self.apps_scroll_frame, 
+            (0, 0),
+            window=self.apps_scroll_frame,
             anchor='nw'
         )
-        
+
         # Pack canvas and scrollbar
         self.apps_canvas.pack(side='left', fill='both', expand=True)
         apps_scrollbar.pack(side='right', fill='y')
-        
+
         # Bind scroll events
         self.apps_scroll_frame.bind('<Configure>', self.on_apps_frame_configure)
         self.apps_canvas.bind('<Configure>', self.on_apps_canvas_configure)
-        
+
         # Enhanced mouse wheel support (Windows + Linux/Unix)
         self.apps_canvas.bind_all('<MouseWheel>', self.on_apps_mousewheel)  # Windows
         self.apps_canvas.bind_all('<Button-4>', self.on_apps_mousewheel)    # Linux scroll up
         self.apps_canvas.bind_all('<Button-5>', self.on_apps_mousewheel)    # Linux scroll down
-        
+
         # Also bind to the scroll frame for better coverage
         self.apps_scroll_frame.bind('<MouseWheel>', self.on_apps_mousewheel)
         self.apps_scroll_frame.bind('<Button-4>', self.on_apps_mousewheel)
         self.apps_scroll_frame.bind('<Button-5>', self.on_apps_mousewheel)
-        
+
         # Initialize app cards tracking
         self.app_cards = {}
         self.app_vars = {}
-        
+
         # Populate app cards
         self.populate_app_cards()
-    
+
     def populate_app_cards(self):
         """Populate the applications with modern visual cards"""
         try:
             # Clear existing cards
             for widget in self.apps_scroll_frame.winfo_children():
                 widget.destroy()
-            
+
             self.app_cards.clear()
             self.app_vars.clear()
-            
+
             apps = self.get_current_game_apps()
-            
+
             # App icons mapping with professional symbols
             app_icons = {
                 'EDMC': '◈',        # Market data connector
@@ -995,35 +1025,35 @@ class ExilesInstaller:
                 'AutoHotkey': '⚡',  # Automation scripts
                 '7zip': '📦'        # Archive manager
             }
-            
+
             # Apply current filters
             filter_text = self.filter_var.get().lower() if hasattr(self, 'filter_var') else ""
             filter_category = self.filter_category_var.get() if hasattr(self, 'filter_category_var') else "All Categories"
-            
+
             for app in apps:
                 app_name = app.get('name', 'Unknown')
                 app_description = app.get('description', '')
                 app_id = app.get('id', '')
                 install_type = app.get('install_type', '')
                 is_optional = app.get('optional', True)
-                
+
                 # Apply text filter
-                if filter_text and (filter_text not in app_name.lower() and 
+                if filter_text and (filter_text not in app_name.lower() and
                                    filter_text not in app_description.lower()):
                     continue
-                
+
                 # Apply category filter
                 if filter_category != "All Categories":
                     app_category = app.get('category', 'General')
                     if filter_category != app_category:
                         continue
-                
+
                 self.create_app_card(app, app_icons)
-                
+
         except Exception as e:
             logger.error(f"Error populating app cards: {e}")
             # Log error but don't show in progress text for initial load
-    
+
     def create_app_card(self, app, app_icons):
         """Create a modern visual card for an application"""
         app_id = app.get('id', '')
@@ -1031,15 +1061,15 @@ class ExilesInstaller:
         description = app.get('description', 'No description available')
         optional = app.get('optional', True)
         category = app.get('category', 'General')
-        
+
         # Get current game information
         games = self.apps_config.get("games", {})
         current_game_data = games.get(self.current_game, {})
         game_name = current_game_data.get("name", self.current_game)
-        
+
         # Get icon for this app
         icon = app_icons.get(name, '📦')
-        
+
         # Card container with visual styling
         card_frame = tk.Frame(
             self.apps_scroll_frame,
@@ -1048,20 +1078,20 @@ class ExilesInstaller:
             bd=0
         )
         card_frame.pack(fill='x', padx=5, pady=3)
-        
+
         # Card content with padding
         card_content = tk.Frame(card_frame, bg=self.colors['bg_accent'])
         card_content.pack(fill='x', padx=20, pady=15)
-        
+
         # Left section with checkbox and icon
         left_section = tk.Frame(card_content, bg=self.colors['bg_accent'])
         left_section.pack(side='left', fill='y')
-        
+
         # Checkbox variable - initialize with existing selection state
         var = tk.BooleanVar()
         var.set(app_id in self.selected_apps)  # Preserve existing selection
         self.app_vars[app_id] = var
-        
+
         # Custom styled checkbox
         checkbox = tk.Checkbutton(
             left_section,
@@ -1077,7 +1107,7 @@ class ExilesInstaller:
             command=lambda: self.on_app_selection_change()
         )
         checkbox.pack(side='left', padx=(0, 15))
-        
+
         # App icon with color
         icon_label = tk.Label(
             left_section,
@@ -1087,15 +1117,15 @@ class ExilesInstaller:
             bg=self.colors['bg_accent']
         )
         icon_label.pack(side='left', padx=(0, 20))
-        
+
         # Center section with app details
         center_section = tk.Frame(card_content, bg=self.colors['bg_accent'])
         center_section.pack(side='left', fill='both', expand=True)
-        
+
         # App name with visual styling
         name_frame = tk.Frame(center_section, bg=self.colors['bg_accent'])
         name_frame.pack(fill='x', anchor='w')
-        
+
         name_label = tk.Label(
             name_frame,
             text=name,
@@ -1105,7 +1135,7 @@ class ExilesInstaller:
             anchor='w'
         )
         name_label.pack(side='left')
-        
+
         # Category badge (always show)
         category_badge = tk.Label(
             name_frame,
@@ -1117,7 +1147,7 @@ class ExilesInstaller:
             pady=2
         )
         category_badge.pack(side='left', padx=(10, 0))
-        
+
         # Optional/Required badge
         required_badge = None
         if not optional:
@@ -1131,7 +1161,7 @@ class ExilesInstaller:
                 pady=2
             )
             required_badge.pack(side='left', padx=(5, 0))
-        
+
         # Admin privilege badge
         if self.requires_admin_privileges(app):
             admin_badge = tk.Label(
@@ -1144,7 +1174,7 @@ class ExilesInstaller:
                 pady=2
             )
             admin_badge.pack(side='left', padx=(5, 0))
-        
+
         # App description
         desc_label = tk.Label(
             center_section,
@@ -1157,8 +1187,8 @@ class ExilesInstaller:
             wraplength=400
         )
         desc_label.pack(fill='x', anchor='w', pady=(5, 0))
-        
-        # Game information label  
+
+        # Game information label
         game_info_label = tk.Label(
             center_section,
             text=f"🎮 {game_name}",
@@ -1168,21 +1198,21 @@ class ExilesInstaller:
             anchor='w'
         )
         game_info_label.pack(fill='x', anchor='w', pady=(2, 0))
-        
+
         # Right section with status indicator
         right_section = tk.Frame(card_content, bg=self.colors['bg_accent'])
         right_section.pack(side='right', fill='y', padx=(10, 0))
-        
+
         # Get installation status for this app
         app_status = self.app_statuses.get(app_id, {})
         status = app_status.get('status', 'unknown')
         installed_version = app_status.get('installed_version', None)
         remote_version = app_status.get('remote_version', None)
-        
+
         # Status indicator badge
         status_frame = tk.Frame(right_section, bg=self.colors['bg_accent'])
         status_frame.pack(pady=(5, 0))
-        
+
         # Create status badge based on installation status
         if status == 'installed':
             status_icon = "✅"
@@ -1207,7 +1237,7 @@ class ExilesInstaller:
             status_text = "CHECKING..."
             status_color = self.colors['info']
             version_text = ""
-        
+
         # Status icon
         status_icon_label = tk.Label(
             status_frame,
@@ -1217,7 +1247,7 @@ class ExilesInstaller:
             bg=self.colors['bg_accent']
         )
         status_icon_label.pack()
-        
+
         # Version information (if available)
         if version_text:
             version_label = tk.Label(
@@ -1228,7 +1258,7 @@ class ExilesInstaller:
                 bg=self.colors['bg_accent']
             )
             version_label.pack(pady=(1, 0))
-        
+
         # Store card reference with status components
         self.app_cards[app_id] = {
             'frame': card_frame,
@@ -1239,7 +1269,7 @@ class ExilesInstaller:
             'status_icon': status_icon_label,
             'version_label': version_label if version_text else None
         }
-        
+
         # Hover effects for the entire card
         def on_enter(event):
             card_frame.configure(bg=self.colors['bg_hover'])
@@ -1261,7 +1291,7 @@ class ExilesInstaller:
                 version_label.configure(bg=self.colors['bg_hover'])
             if required_badge:
                 required_badge.configure(bg=self.colors['bg_hover'])
-                
+
         def on_leave(event):
             card_frame.configure(bg=self.colors['bg_accent'])
             card_content.configure(bg=self.colors['bg_accent'])
@@ -1282,39 +1312,39 @@ class ExilesInstaller:
                 version_label.configure(bg=self.colors['bg_accent'])
             if required_badge:
                 required_badge.configure(bg=self.colors['warning'])  # Keep original required color
-        
+
         # Make entire card clickable to toggle selection
         def on_click(event):
             var.set(not var.get())
             self.on_app_selection_change()
-        
+
         # Bind events to all card elements
-        widgets_to_bind = [card_frame, card_content, left_section, center_section, right_section, 
-                          name_frame, icon_label, name_label, desc_label, 
+        widgets_to_bind = [card_frame, card_content, left_section, center_section, right_section,
+                          name_frame, icon_label, name_label, desc_label,
                           category_badge, game_info_label, status_frame, status_icon_label]
-        
+
         # Add required badge and version label to bind list if they exist
         if required_badge:
             widgets_to_bind.append(required_badge)
         if version_text:
             widgets_to_bind.append(version_label)
-        
+
         for widget in widgets_to_bind:
             widget.bind("<Enter>", on_enter)
             widget.bind("<Leave>", on_leave)
             widget.bind("<Button-1>", on_click)
             widget.configure(cursor='hand2')
-    
+
     def on_apps_frame_configure(self, event):
         """Configure scrolling region when frame changes"""
         self.apps_canvas.configure(scrollregion=self.apps_canvas.bbox("all"))
-    
+
     def on_apps_canvas_configure(self, event):
         """Configure canvas when it's resized"""
         # Make the scroll frame width match the canvas
         canvas_width = event.width
         self.apps_canvas.itemconfig(self.apps_canvas_frame, width=canvas_width)
-    
+
     def on_apps_mousewheel(self, event):
         """Handle mouse wheel scrolling in app list (Windows + Linux/Unix support)"""
         # Windows mouse wheel
@@ -1322,26 +1352,26 @@ class ExilesInstaller:
             # More responsive scrolling - scroll 3 units per wheel tick
             scroll_amount = int(-1 * (event.delta / 120)) * 3
             self.apps_canvas.yview_scroll(scroll_amount, "units")
-        
+
         # Linux/Unix mouse wheel (Button-4 = scroll up, Button-5 = scroll down)
         elif event.num == 4:
             self.apps_canvas.yview_scroll(-3, "units")  # Scroll up
         elif event.num == 5:
             self.apps_canvas.yview_scroll(3, "units")   # Scroll down
-        
+
     def create_visual_presets(self, parent):
         """Create visually appealing preset buttons"""
         # Presets section
         presets_section = tk.Frame(parent, bg=self.colors['bg_secondary'])
         presets_section.pack(fill='x', padx=20, pady=(0, 20))
-        
+
         # Section header
         presets_header = tk.Frame(presets_section, bg=self.colors['bg_secondary'])
         presets_header.pack(fill='x', pady=(0, 15))
-        
+
         header_divider = tk.Frame(presets_header, bg=self.colors['border_accent'], height=1)
         header_divider.pack(fill='x', pady=(0, 10))
-        
+
         presets_title = tk.Label(
             presets_header,
             text="⚡ QUICK DEPLOY PRESETS",
@@ -1350,21 +1380,21 @@ class ExilesInstaller:
             bg=self.colors['bg_secondary']
         )
         presets_title.pack(anchor='w')
-        
+
         # Preset buttons grid
         buttons_grid = tk.Frame(presets_section, bg=self.colors['bg_secondary'])
         buttons_grid.pack(fill='x')
-        
+
         presets = [
             ("🎯 Essential", ["EDMC", "EDDI", "VoiceAttack"], "Core tools for commanders"),
             ("🗺️ Explorer", ["EDMC", "EDDiscovery", "opentrack"], "Exploration & tracking"),
             ("🕹️ HOTAS", ["JoystickGremlin", "HidHide", "vJoy"], "Flight control setup"),
             ("📦 Complete", "all", "Deploy everything")
         ]
-        
+
         for i, (name, app_ids, desc) in enumerate(presets):
             self.create_preset_button(buttons_grid, name, desc, app_ids, i)
-            
+
     def create_preset_button(self, parent, name, description, app_ids, index):
         """Create a single visual preset button"""
         # Button container
@@ -1373,15 +1403,15 @@ class ExilesInstaller:
             btn_container.pack(side='left', fill='x', expand=True, padx=(0, 10))
         else:
             btn_container.pack(side='left', fill='x', expand=True, padx=(10, 0))
-        
+
         # Visual button with hover effects
         btn_frame = tk.Frame(btn_container, bg=self.colors['bg_accent'])
         btn_frame.pack(fill='both', pady=5)
-        
+
         # Button content
         btn_content = tk.Frame(btn_frame, bg=self.colors['bg_accent'])
         btn_content.pack(expand=True, fill='both', padx=15, pady=12)
-        
+
         # Button title
         btn_title = tk.Label(
             btn_content,
@@ -1392,7 +1422,7 @@ class ExilesInstaller:
             cursor='hand2'
         )
         btn_title.pack()
-        
+
         # Button description
         btn_desc = tk.Label(
             btn_content,
@@ -1403,43 +1433,43 @@ class ExilesInstaller:
             cursor='hand2'
         )
         btn_desc.pack(pady=(2, 0))
-        
+
         # Make entire button clickable
         def on_click(event):
             self.apply_preset(app_ids)
-            
+
         def on_enter(event):
             btn_frame.configure(bg=self.colors['bg_hover'])
             btn_content.configure(bg=self.colors['bg_hover'])
             btn_title.configure(bg=self.colors['bg_hover'])
             btn_desc.configure(bg=self.colors['bg_hover'])
-            
+
         def on_leave(event):
             btn_frame.configure(bg=self.colors['bg_accent'])
             btn_content.configure(bg=self.colors['bg_accent'])
             btn_title.configure(bg=self.colors['bg_accent'])
             btn_desc.configure(bg=self.colors['bg_accent'])
-        
+
         # Bind events to all elements
         for widget in [btn_frame, btn_content, btn_title, btn_desc]:
             widget.bind("<Button-1>", on_click)
             widget.bind("<Enter>", on_enter)
             widget.bind("<Leave>", on_leave)
-            
+
     def create_visual_progress_display(self, parent):
         """Create a visually rich progress display"""
         # Progress container
         progress_container = tk.Frame(parent, bg=self.colors['bg_secondary'])
         progress_container.pack(fill='both', expand=True, padx=20, pady=20)
-        
+
         # Status display area
         status_area = tk.Frame(progress_container, bg=self.colors['bg_panel'])
         status_area.pack(fill='both', expand=True)
-        
+
         # Status content
         status_content = tk.Frame(status_area, bg=self.colors['bg_panel'])
         status_content.pack(fill='both', expand=True, padx=20, pady=20)
-        
+
         # Progress text with visual styling
         self.progress_text = tk.Text(
             status_content,
@@ -1452,33 +1482,33 @@ class ExilesInstaller:
             bd=0,
             relief='flat'
         )
-        
+
         # Progress scrollbar
         progress_scrollbar = tk.Scrollbar(
-            status_content, 
-            orient='vertical', 
+            status_content,
+            orient='vertical',
             command=self.progress_text.yview,
             bg=self.colors['bg_panel'],
             troughcolor=self.colors['bg_secondary'],
             activebackground=self.colors['accent_secondary']
         )
         self.progress_text.configure(yscrollcommand=progress_scrollbar.set)
-        
+
         self.progress_text.pack(side='left', fill='both', expand=True)
         progress_scrollbar.pack(side='right', fill='y')
-        
+
         # Visual progress bar section
         progress_section = tk.Frame(progress_container, bg=self.colors['bg_secondary'])
         progress_section.pack(fill='x', pady=(15, 0))
-        
+
         # Progress bar with visual styling
         progress_bg = tk.Frame(progress_section, bg=self.colors['bg_panel'], height=30)
         progress_bg.pack(fill='x')
         progress_bg.pack_propagate(False)
-        
+
         progress_content = tk.Frame(progress_bg, bg=self.colors['bg_panel'])
         progress_content.pack(expand=True, fill='both', padx=20, pady=8)
-        
+
         # Custom progress bar
         self.progress_bar = ttk.Progressbar(
             progress_content,
@@ -1486,7 +1516,7 @@ class ExilesInstaller:
             style='Custom.Horizontal.TProgressbar'
         )
         self.progress_bar.pack(fill='x')
-        
+
         # Configure custom progress bar style
         style = ttk.Style()
         style.configure(
@@ -1497,7 +1527,7 @@ class ExilesInstaller:
             lightcolor=self.colors['accent_primary'],
             darkcolor=self.colors['accent_primary']
         )
-        
+
         # Status label
         self.status_label = tk.Label(
             progress_section,
@@ -1507,22 +1537,22 @@ class ExilesInstaller:
             bg=self.colors['bg_secondary']
         )
         self.status_label.pack(pady=(10, 0))
-        
+
     def create_visual_control_dock(self, parent):
         """Create a visual control dock"""
-        # Control dock container  
+        # Control dock container
         dock = tk.Frame(parent, bg=self.colors['bg_secondary'], height=100)
         dock.pack(side='bottom', fill='x', padx=20, pady=(10, 20))
         dock.pack_propagate(False)
-        
+
         # Dock content
         dock_content = tk.Frame(dock, bg=self.colors['bg_secondary'])
         dock_content.pack(expand=True, fill='both', padx=30, pady=20)
-        
+
         # Main action area
         action_area = tk.Frame(dock_content, bg=self.colors['bg_secondary'])
         action_area.pack(side='left', fill='y')
-        
+
         # Primary action button with visual styling
         self.install_button = tk.Button(
             action_area,
@@ -1540,16 +1570,16 @@ class ExilesInstaller:
             padx=40
         )
         self.install_button.pack()
-        
+
         # Secondary actions
         secondary_area = tk.Frame(dock_content, bg=self.colors['bg_secondary'])
         secondary_area.pack(side='left', fill='y', padx=(30, 0))
-        
+
         secondary_buttons = [
             ("📋 Select All", self.select_all_apps),
             ("❌ Clear All", self.select_no_apps)
         ]
-        
+
         for text, command in secondary_buttons:
             btn = tk.Button(
                 secondary_area,
@@ -1567,26 +1597,26 @@ class ExilesInstaller:
                 cursor='hand2'
             )
             btn.pack(side='left', padx=5)
-            
+
             # Hover effects
             def on_enter(e, button=btn):
                 button.configure(bg=self.colors['bg_hover'])
             def on_leave(e, button=btn):
                 button.configure(bg=self.colors['bg_accent'])
-            
+
             btn.bind("<Enter>", on_enter)
             btn.bind("<Leave>", on_leave)
-        
+
         # Utility tools area
         utilities_area = tk.Frame(dock_content, bg=self.colors['bg_secondary'])
         utilities_area.pack(side='right', fill='y')
-        
+
         utility_buttons = [
             ("⚙️ Settings", self.show_settings),
             ("📋 View Log", self.show_log),
             ("🔄 Check Updates", self.manual_update_check)
         ]
-        
+
         for text, command in utility_buttons:
             btn = tk.Button(
                 utilities_area,
@@ -1604,47 +1634,47 @@ class ExilesInstaller:
                 cursor='hand2'
             )
             btn.pack(side='left', padx=3)
-            
+
             # Hover effects
             def on_enter(e, button=btn):
                 button.configure(bg=self.colors['bg_hover'])
             def on_leave(e, button=btn):
                 button.configure(bg=self.colors['info'])
-            
+
             btn.bind("<Enter>", on_enter)
             btn.bind("<Leave>", on_leave)
-    
+
     def create_visual_quick_selection(self, parent):
         """This method is replaced by create_visual_presets"""
         pass
-    
+
     def on_app_selection_change(self, event=None):
         """Handle app selection changes with card interface"""
         try:
             self.selected_apps.clear()
-            
+
             # Get selected apps from checkboxes
             for app_id, var in self.app_vars.items():
                 if var.get():
                     self.selected_apps.add(app_id)
-            
+
             # Update status
             count = len(self.selected_apps)
             if hasattr(self, 'status_label'):
                 self.status_label.configure(text=f"{count} applications selected for deployment")
-                
+
         except Exception as e:
             logger.error(f"Error in app selection: {e}")
-    
+
     def filter_apps(self, event=None):
         """Filter the app cards based on search text"""
         try:
             # Refresh the cards with current filter
             self.populate_app_cards()
-                    
+
         except Exception as e:
             logger.error(f"Error filtering apps: {e}")
-    
+
     def on_filter_change(self, value=None):
         """Handle filter type dropdown changes"""
         try:
@@ -1652,7 +1682,7 @@ class ExilesInstaller:
             self.populate_app_cards()
         except Exception as e:
             logger.error(f"Error changing filter: {e}")
-    
+
 
     def create_category_dropdown(self):
         """Create or recreate the category dropdown with current game categories"""
@@ -1660,7 +1690,7 @@ class ExilesInstaller:
             # Remove existing dropdown if it exists
             if hasattr(self, 'category_dropdown'):
                 self.category_dropdown.destroy()
-            
+
             # Get categories from current game's apps
             apps = self.get_current_game_apps()
             categories = set()
@@ -1668,10 +1698,10 @@ class ExilesInstaller:
                 category = app.get('category', 'General')
                 if category:
                     categories.add(category)
-            
+
             # Build category options
             category_options = ["All Categories"] + sorted(list(categories))
-            
+
             # Create new dropdown
             self.category_dropdown = tk.OptionMenu(
                 self.category_frame,
@@ -1688,7 +1718,7 @@ class ExilesInstaller:
                 relief='flat'
             )
             self.category_dropdown.pack(side='left')
-            
+
         except Exception as e:
             logger.error(f"Error creating category dropdown: {e}")
 
@@ -1708,24 +1738,24 @@ class ExilesInstaller:
                 if game_data.get("name", game_id) == selected_game_name:
                     self.current_game = game_id
                     break
-            
+
             # Clear current selections since we're switching games
             self.selected_apps.clear()
-            
+
             # Log the game change
             self.log_message(f"◆ Switched to {selected_game_name}", "info")
-            
+
             # Update category dropdown with new game's categories
             self.filter_category_var.set("All Categories")  # Reset category filter
             self.create_category_dropdown()
-            
+
             # Refresh the interface
             self.populate_app_cards()
-            
+
         except Exception as e:
             logger.error(f"Error changing game: {e}")
             self.log_message(f"◆ Error switching games: {str(e)}", "error")
-    
+
     def apply_preset(self, app_ids):
         """Apply a preset selection with card interface"""
         try:
@@ -1733,7 +1763,7 @@ class ExilesInstaller:
             for var in self.app_vars.values():
                 var.set(False)
             self.selected_apps.clear()
-            
+
             if app_ids == "all":
                 # Select all visible apps
                 for app_id, var in self.app_vars.items():
@@ -1745,26 +1775,26 @@ class ExilesInstaller:
                     if app_id in self.app_vars:
                         self.app_vars[app_id].set(True)
                         self.selected_apps.add(app_id)
-            
+
             # Update status
             count = len(self.selected_apps)
             if hasattr(self, 'status_label'):
                 self.status_label.configure(text=f"{count} applications selected for deployment")
-                
+
         except Exception as e:
             logger.error(f"Error applying preset: {e}")
-        
+
     def create_modern_progress_panel(self, parent):
         """Create the modern installation progress panel"""
         # Clean right panel
         right_frame = tk.Frame(parent, bg=self.colors['bg_panel'], width=500)
         right_frame.pack(side='right', fill='both', expand=True, padx=(10, 0))
-        
+
         # Panel header with modern styling
         header_frame = tk.Frame(right_frame, bg=self.colors['bg_secondary'], height=45)
         header_frame.pack(fill='x', padx=8, pady=(8, 0))
         header_frame.pack_propagate(False)
-        
+
         title_label = tk.Label(
             header_frame,
             text="◢ DEPLOYMENT STATUS MONITOR ◣",
@@ -1773,11 +1803,11 @@ class ExilesInstaller:
             bg=self.colors['bg_secondary']
         )
         title_label.pack(expand=True)
-        
+
         # Progress text area
         progress_frame = tk.Frame(right_frame, bg=self.colors['bg_panel'])
         progress_frame.pack(fill='both', expand=True, padx=10, pady=(0, 10))
-        
+
         self.progress_text = tk.Text(
             progress_frame,
             font=('Consolas', 9),
@@ -1787,13 +1817,13 @@ class ExilesInstaller:
             state='disabled',
             wrap='word'
         )
-        
+
         progress_scrollbar = tk.Scrollbar(progress_frame, orient='vertical', command=self.progress_text.yview)
         self.progress_text.configure(yscrollcommand=progress_scrollbar.set)
-        
+
         self.progress_text.pack(side='left', fill='both', expand=True)
         progress_scrollbar.pack(side='right', fill='y')
-        
+
         # Overall progress bar
         self.progress_bar = ttk.Progressbar(
             right_frame,
@@ -1801,7 +1831,7 @@ class ExilesInstaller:
             style='Accent.Horizontal.TProgressbar'
         )
         self.progress_bar.pack(fill='x', padx=10, pady=(0, 10))
-        
+
         # Status label
         self.status_label = tk.Label(
             right_frame,
@@ -1811,14 +1841,14 @@ class ExilesInstaller:
             bg=self.colors['bg_panel']
         )
         self.status_label.pack(pady=(0, 10))
-        
+
     def create_modern_control_panel(self, parent):
         """Create the modern bottom control panel"""
         # Clean control panel
         control_frame = tk.Frame(parent, bg=self.colors['bg_secondary'], height=80)
         control_frame.pack(fill='x', pady=(20, 0))
         control_frame.pack_propagate(False)
-        
+
         # Clean install button
         self.install_button = tk.Button(
             control_frame,
@@ -1836,7 +1866,7 @@ class ExilesInstaller:
             padx=20
         )
         self.install_button.pack(side='left', padx=20, pady=20)
-        
+
         # Additional controls
         tk.Button(
             control_frame,
@@ -1846,7 +1876,7 @@ class ExilesInstaller:
             fg=self.colors['text_primary'],
             command=self.select_all_apps
         ).pack(side='left', padx=(0, 10), pady=20)
-        
+
         tk.Button(
             control_frame,
             text="Select None",
@@ -1855,7 +1885,7 @@ class ExilesInstaller:
             fg=self.colors['text_primary'],
             command=self.select_no_apps
         ).pack(side='left', padx=(0, 10), pady=20)
-        
+
         # Settings and info buttons on the right
         tk.Button(
             control_frame,
@@ -1865,7 +1895,7 @@ class ExilesInstaller:
             fg=self.colors['text_primary'],
             command=self.show_settings
         ).pack(side='right', padx=20, pady=20)
-        
+
         tk.Button(
             control_frame,
             text="View Log",
@@ -1877,7 +1907,7 @@ class ExilesInstaller:
             bd=0,
             pady=8
         ).pack(side='right', padx=(0, 10), pady=20)
-        
+
         tk.Button(
             control_frame,
             text="◆ Check Updates",
@@ -1889,12 +1919,12 @@ class ExilesInstaller:
             bd=0,
             pady=8
         ).pack(side='right', padx=(0, 10), pady=20)
-        
+
     def create_quick_selection_buttons(self, parent):
         """Create quick selection preset buttons"""
         preset_frame = tk.Frame(parent, bg=self.colors['bg_panel'])
         preset_frame.pack(fill='x', padx=10, pady=(0, 10))
-        
+
         tk.Label(
             preset_frame,
             text="Quick Presets:",
@@ -1902,17 +1932,17 @@ class ExilesInstaller:
             fg=self.colors['text_primary'],
             bg=self.colors['bg_panel']
         ).pack(anchor='w', pady=(0, 5))
-        
+
         buttons_frame = tk.Frame(preset_frame, bg=self.colors['bg_panel'])
         buttons_frame.pack(fill='x')
-        
+
         presets = [
             ("Essential", ["EDMC", "EDDI", "VoiceAttack", "7zip"]),
             ("Explorer", ["EDMC", "EDDiscovery", "opentrack", "AutoHotkey"]),
             ("HOTAS", ["JoystickGremlin", "HidHide", "vJoy", "TARGET"]),
             ("Complete", "all")
         ]
-        
+
         for name, app_ids in presets:
             btn = tk.Button(
                 buttons_frame,
@@ -1923,7 +1953,7 @@ class ExilesInstaller:
                 command=lambda ids=app_ids: self.select_preset(ids)
             )
             btn.pack(side='left', padx=(0, 5))
-            
+
     def populate_apps_list(self):
         """Legacy method - now redirects to card-based interface"""
         # This method is replaced by populate_app_cards for the new visual interface
@@ -1931,104 +1961,104 @@ class ExilesInstaller:
             self.populate_app_cards()
         else:
             logger.warning("populate_app_cards method not available - interface may not be initialized")
-            
+
     # Removed duplicate filter_apps method - using the card-based version
-        
+
     def select_preset(self, app_ids):
         """Select a preset group of applications - updated for card interface"""
         if app_ids == "all":
             self.select_all_apps()
             return
-            
+
         # Clear current selection
         for var in self.app_vars.values():
             var.set(False)
         self.selected_apps.clear()
-        
+
         # Select specified apps using card interface
         for app_id in app_ids:
             if app_id in self.app_vars:
                 self.app_vars[app_id].set(True)
                 self.selected_apps.add(app_id)
-        
+
         # Update status
         self.on_app_selection_change()
-                    
+
     def select_all_apps(self):
         """Select all applications"""
         for var in self.app_vars.values():
             var.set(True)
         self.on_app_selection_change()
-        
+
     def select_no_apps(self):
         """Deselect all applications"""
         for var in self.app_vars.values():
             var.set(False)
         self.on_app_selection_change()
-        
+
     def start_installation(self):
         """Start the installation process"""
         if not self.selected_apps:
             messagebox.showwarning("No Selection", "Please select at least one application to install.")
             return
-            
+
         # Get selected apps from card interface
         selected_apps = []
         apps_list = self.apps_config.get('apps', [])
-        
+
         for app_id in self.selected_apps:
             app_data = next((app for app in apps_list if app.get('id') == app_id), None)
             if app_data:
                 selected_apps.append(app_data)
-                    
+
         if not selected_apps:
             messagebox.showerror("Error", "No valid applications selected.")
             return
-            
+
         # Start installation in a separate thread
         self.install_button.configure(state='disabled', text="🚀 DEPLOYING...")
         self.log_message("Starting deployment process...", "info")
-        
+
         install_thread = threading.Thread(target=self.install_apps, args=(selected_apps,))
         install_thread.daemon = True
         install_thread.start()
-        
+
     def install_apps(self, apps):
         """Install the selected applications"""
         total_apps = len(apps)
         completed = 0
-        
+
         try:
             for app in apps:
                 app_name = app.get('name', 'Unknown')
                 self.log_message(f"\n{'='*50}", "info")
                 self.log_message(f"Installing: {app_name}", "info")
                 self.log_message(f"{'='*50}", "info")
-                
+
                 # Update progress
                 self.update_progress(completed / total_apps * 100)
                 self.update_status(f"Installing {app_name}...")
-                
+
                 # Install the app
                 success = self.install_single_app(app)
-                
+
                 if success:
                     self.log_message(f"✓ {app_name} installed successfully", "success")
                     completed += 1
                 else:
                     self.log_message(f"✗ Failed to install {app_name}", "error")
-                    
+
                 # Update progress
                 self.update_progress(completed / total_apps * 100)
-                
+
         except Exception as e:
             self.log_message(f"Installation error: {str(e)}", "error")
             logger.exception("Installation failed")
-            
+
         finally:
             # Re-enable install button
             self.root.after(0, self.installation_complete, completed, total_apps)
-            
+
     def install_single_app(self, app):
         """Install a single application with fallback methods"""
         try:
@@ -2036,10 +2066,10 @@ class ExilesInstaller:
             fallback_methods = app.get('install_methods', [])
             if fallback_methods:
                 return self._install_with_fallbacks(app, fallback_methods)
-            
+
             # Legacy single install_type support
             install_type = app.get('install_type', 'unknown')
-            
+
             if install_type == 'winget':
                 return self.install_via_winget(app)
             elif install_type == 'github':
@@ -2053,25 +2083,25 @@ class ExilesInstaller:
             else:
                 self.log_message(f"Unknown install type: {install_type}", "error")
                 return False
-                
+
         except Exception as e:
             self.log_message(f"Error installing app: {str(e)}", "error")
             logger.exception(f"Failed to install {app.get('name', 'Unknown')}")
             return False
-    
+
     def _install_with_fallbacks(self, app, methods):
         """Try multiple installation methods until one succeeds"""
         app_name = app.get('name', 'Unknown')
-        
+
         for i, method in enumerate(methods):
             method_type = method.get('type', 'unknown')
             self.log_message(f"Trying method {i+1}/{len(methods)}: {method_type}", "info")
-            
+
             # Create temporary app config with method details
             temp_app = dict(app)  # Copy base app config
             temp_app.update(method)  # Override with method-specific config
             temp_app['install_type'] = method_type
-            
+
             try:
                 success = False
                 if method_type == 'winget':
@@ -2087,137 +2117,137 @@ class ExilesInstaller:
                 else:
                     self.log_message(f"Unknown method type: {method_type}", "warning")
                     continue
-                
+
                 if success:
                     self.log_message(f"Successfully installed {app_name} using method: {method_type}", "success")
                     return True
                 else:
                     self.log_message(f"Method {method_type} failed, trying next method...", "warning")
-                    
+
             except Exception as e:
                 self.log_message(f"Method {method_type} error: {str(e)}", "warning")
                 continue
-        
+
         self.log_message(f"All installation methods failed for {app_name}", "error")
         return False
-            
+
     def install_via_winget(self, app):
         """Install application via winget"""
         winget_id = app.get('winget_id')
         if not winget_id:
             self.log_message("No winget ID specified", "error")
             return False
-            
+
         app_name = app.get('name', 'Unknown')
         self.log_message(f"Installing via winget: {winget_id}", "info")
-        
+
         try:
             cmd = ['winget', 'install', '--id', winget_id, '--silent', '--accept-package-agreements', '--accept-source-agreements']
-            
+
             # Check if admin privileges are required for winget
             if self.requires_admin_privileges(app) and not self.is_admin:
                 self.log_message(f"⚠️ {app_name} requires administrator privileges for winget installation", "warning")
                 result = self.run_elevated_process(cmd, app_name)
             else:
                 result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
-            
+
             if result.returncode == 0:
                 self.log_message("Winget installation completed", "success")
                 return True
             else:
                 self.log_message(f"Winget installation failed: {result.stderr}", "error")
                 return False
-                
+
         except subprocess.TimeoutExpired:
             self.log_message("Winget installation timed out", "error")
             return False
         except Exception as e:
             self.log_message(f"Winget installation error: {str(e)}", "error")
             return False
-            
+
     def install_via_github(self, app):
         """Install application from GitHub releases with smart asset matching"""
         repo = app.get('github_repo')
         asset_pattern = app.get('github_asset')
-        
+
         if not repo or not asset_pattern:
             self.log_message("Missing GitHub repository or asset pattern", "error")
             return False
-            
+
         self.log_message(f"Downloading from GitHub: {repo}", "info")
-        
+
         try:
             # Get latest release
             api_url = f"https://api.github.com/repos/{repo}/releases/latest"
             response = requests.get(api_url, timeout=30)
             response.raise_for_status()
-            
+
             release_data = response.json()
             assets = release_data.get('assets', [])
-            
+
             if not assets:
                 self.log_message("No assets found in latest release", "error")
                 return False
-            
+
             # Find matching asset using smart matching
             download_url = None
             matched_asset_name = None
-            
+
             # Try multiple matching strategies
             for asset in assets:
                 asset_name = asset.get('name', '')
-                
+
                 # Strategy 1: Exact match (original behavior)
                 if asset_pattern == asset_name:
                     download_url = asset.get('browser_download_url')
                     matched_asset_name = asset_name
                     self.log_message(f"Found exact match: {asset_name}", "info")
                     break
-                    
+
                 # Strategy 2: Contains pattern (case insensitive)
                 if asset_pattern.lower() in asset_name.lower():
                     download_url = asset.get('browser_download_url')
                     matched_asset_name = asset_name
                     self.log_message(f"Found pattern match: {asset_name}", "info")
                     break
-                    
+
                 # Strategy 3: Pattern matching for common variations
                 if self._matches_asset_pattern(asset_pattern, asset_name):
                     download_url = asset.get('browser_download_url')
                     matched_asset_name = asset_name
                     self.log_message(f"Found smart match: {asset_name}", "info")
                     break
-                    
+
             if not download_url:
                 # List available assets for troubleshooting
                 available = [asset.get('name') for asset in assets]
                 self.log_message(f"Asset pattern '{asset_pattern}' not found", "error")
                 self.log_message(f"Available assets: {', '.join(available[:5])}{'...' if len(available) > 5 else ''}", "info")
                 return False
-                
+
             # Download the file
             return self.download_and_install(download_url, matched_asset_name, app)
-            
+
         except Exception as e:
             self.log_message(f"GitHub download error: {str(e)}", "error")
             return False
-    
+
     def _matches_asset_pattern(self, pattern, asset_name):
         """Smart pattern matching for GitHub assets"""
         import re
-        
+
         # Normalize both strings
         pattern_clean = pattern.lower().replace('_', '').replace('-', '').replace(' ', '')
         asset_clean = asset_name.lower().replace('_', '').replace('-', '').replace(' ', '')
-        
+
         # Check if the core name matches (ignoring separators)
         if pattern_clean in asset_clean:
             return True
-            
+
         # Extract file extensions and base names
         pattern_base = pattern.lower().split('.')[0]
         asset_base = asset_name.lower().split('.')[0]
-        
+
         # Check for common installer patterns
         installer_patterns = ['setup', 'install', 'installer']
         for installer_word in installer_patterns:
@@ -2227,71 +2257,71 @@ class ExilesInstaller:
                 asset_app = asset_base.replace(installer_word, '').strip('_-')
                 if pattern_app and asset_app and (pattern_app in asset_app or asset_app in pattern_app):
                     return True
-                    
+
         # Check for version number variations (e.g., "app.exe" vs "app-v1.2.exe")
         version_regex = r'[-._]v?\d+[\d\.-]*'
         pattern_no_version = re.sub(version_regex, '', pattern.lower())
         asset_no_version = re.sub(version_regex, '', asset_name.lower())
-        
+
         if pattern_no_version == asset_no_version:
             return True
-            
+
         return False
-            
+
     def install_via_direct_download(self, app):
         """Install application via direct download"""
         url = app.get('url')
         filename = app.get('filename')
-        
+
         if not url or not filename:
             self.log_message("Missing download URL or filename", "error")
             return False
-            
+
         self.log_message(f"Downloading: {filename}", "info")
         return self.download_and_install(url, filename, app)
-        
+
     def install_via_zip(self, app):
         """Install application from zip file with streaming download"""
         url = app.get('url')
         filename = app.get('filename')
         extract_to = app.get('extract_to', filename.replace('.zip', ''))
-        
+
         if not url or not filename:
             self.log_message("Missing download URL or filename", "error")
             return False
-            
+
         self.log_message(f"Downloading zip: {filename}", "info")
-        
+
         try:
             # Download zip file with streaming
             downloads_dir = Path.home() / "Downloads" / "ExilesHUD"
             downloads_dir.mkdir(parents=True, exist_ok=True)
-            
+
             zip_path = downloads_dir / filename
-            
+
             with requests.get(url, timeout=30, stream=True) as response:
                 response.raise_for_status()
-                
+
                 total_size = int(response.headers.get('content-length', 0))
                 downloaded_size = 0
-                
+
                 # Initialize hash calculator if checksum is provided and not empty
                 expected_checksum = app.get('checksum', '').strip()
                 hash_calculator = hashlib.sha256() if expected_checksum else None
                 if expected_checksum:
                     self.log_message(f"Will verify checksum: {expected_checksum[:16]}...", "info")
-                
+
                 with open(zip_path, 'wb') as f:
                     for chunk in response.iter_content(chunk_size=8192):
                         if chunk:
                             f.write(chunk)
                             downloaded_size += len(chunk)
-                            
+
                             if hash_calculator:
                                 hash_calculator.update(chunk)
-                
+
             self.log_message(f"Downloaded zip to: {zip_path} ({downloaded_size} bytes)", "info")
-            
+
             # Verify checksum if provided
             if expected_checksum and hash_calculator:
                 calculated_checksum = hash_calculator.hexdigest()
@@ -2301,7 +2331,7 @@ class ExilesInstaller:
                     self.log_message(f"Zip checksum verification failed! Expected: {expected_checksum}, Got: {calculated_checksum}", "error")
                     zip_path.unlink(missing_ok=True)
                     return False
-            
+
             # Extract zip
             extract_path = downloads_dir / extract_to
             try:
@@ -2312,38 +2342,38 @@ class ExilesInstaller:
                 self.log_message("Downloaded file is not a valid zip archive", "error")
                 zip_path.unlink(missing_ok=True)
                 return False
-            
+
             # Run post-installation steps
             return self.run_post_steps(app)
-            
+
         except requests.exceptions.RequestException as e:
             self.log_message(f"Network error during zip download: {str(e)}", "error")
             return False
         except Exception as e:
             self.log_message(f"Zip installation error: {str(e)}", "error")
             return False
-    
+
     def install_via_web(self, app):
         """Handle web-based tools by opening URL in browser"""
         import webbrowser
-        
+
         url = app.get('url')
         if not url:
             self.log_message("No URL specified for web tool", "error")
             return False
-            
+
         app_name = app.get('name', 'Unknown')
         description = app.get('description', '')
-        
+
         # Enhanced logging with bookmark reminder
         self.log_message(f"Opening web tool: {app_name}", "info")
         self.log_message(f"URL: {url}", "info")
-        
+
         try:
             # Open URL in default browser
             webbrowser.open(url)
             self.log_message(f"✓ {app_name} opened in browser", "success")
-            
+
             # Add prominent bookmark reminder
             self.log_message("━" * 60, "info")
             self.log_message("⭐ IMPORTANT: BOOKMARK THIS WEBSITE! ⭐", "info")
@@ -2352,56 +2382,56 @@ class ExilesInstaller:
                 self.log_message(f"Purpose: {description}", "info")
             self.log_message("Add it to your bookmarks toolbar for quick access.", "info")
             self.log_message("━" * 60, "info")
-            
+
             return True
-            
+
         except Exception as e:
             self.log_message(f"Failed to open web tool: {str(e)}", "error")
             return False
-            
+
     def download_and_install(self, url, filename, app):
         """Download and install a file with streaming and optional checksum validation"""
         try:
             # Create downloads directory
             downloads_dir = Path(self.settings.get('download_directory', Path.home() / "Downloads" / "ExilesHUD"))
             downloads_dir.mkdir(parents=True, exist_ok=True)
-            
+
             file_path = downloads_dir / filename
-            
+
             # Download file with streaming
             self.log_message(f"Downloading from: {url}", "info")
-            
+
             with requests.get(url, timeout=self.settings.get('download_timeout', 300), stream=True) as response:
                 response.raise_for_status()
-                
+
                 # Get file size if available for progress tracking
                 total_size = int(response.headers.get('content-length', 0))
                 downloaded_size = 0
-                
+
                 # Initialize hash calculator if checksum is provided and not empty
                 expected_checksum = app.get('checksum', '').strip()
                 hash_calculator = hashlib.sha256() if expected_checksum else None
                 if expected_checksum:
                     self.log_message(f"Will verify checksum: {expected_checksum[:16]}...", "info")
-                
+
                 with open(file_path, 'wb') as f:
                     for chunk in response.iter_content(chunk_size=8192):
                         if chunk:
                             f.write(chunk)
                             downloaded_size += len(chunk)
-                            
+
                             # Update hash
                             if hash_calculator:
                                 hash_calculator.update(chunk)
-                            
+
                             # Update progress if total size known
                             if total_size > 0:
                                 progress = (downloaded_size / total_size) * 100
                                 if downloaded_size % (1024 * 1024) == 0:  # Log every MB
                                     self.log_message(f"Downloaded {downloaded_size // (1024*1024)}MB of {total_size // (1024*1024)}MB ({progress:.1f}%)", "info")
-                
+
             self.log_message(f"Download completed: {file_path} ({downloaded_size} bytes)", "info")
-            
+
             # Verify checksum if provided
             if expected_checksum and hash_calculator:
                 calculated_checksum = hash_calculator.hexdigest()
@@ -2412,39 +2442,39 @@ class ExilesInstaller:
                     # Delete the potentially corrupted file
                     file_path.unlink(missing_ok=True)
                     return False
-            
+
             # Install the file
             if filename.endswith('.exe') or filename.endswith('.msi'):
                 return self.run_installer(file_path, app)
             else:
                 self.log_message("File downloaded successfully", "success")
                 return self.run_post_steps(app)
-                
+
         except requests.exceptions.RequestException as e:
             self.log_message(f"Network error during download: {str(e)}", "error")
             return False
         except Exception as e:
             self.log_message(f"Download error: {str(e)}", "error")
             return False
-            
+
     def run_installer(self, file_path, app):
         """Run an executable installer"""
         try:
             app_name = app.get('name', 'Unknown')
             self.log_message(f"Running installer: {file_path.name}", "info")
-            
+
             if file_path.suffix.lower() == '.msi':
                 cmd = ['msiexec', '/i', str(file_path), '/quiet', '/norestart']
             else:
                 cmd = [str(file_path), '/S']  # Common silent install flag
-            
+
             # Check if admin privileges are required
             if self.requires_admin_privileges(app) and not self.is_admin:
                 self.log_message(f"⚠️ {app_name} requires administrator privileges", "warning")
                 result = self.run_elevated_process(cmd, app_name)
             else:
                 result = subprocess.run(cmd, timeout=600, capture_output=True, text=True)
-            
+
             if result.returncode == 0:
                 self.log_message("Installation completed successfully", "success")
                 # Run post-steps only if main installation succeeded
@@ -2455,14 +2485,14 @@ class ExilesInstaller:
                 if result.stderr:
                     self.log_message(f"Installer error output: {result.stderr}", "error")
                 return False
-                
+
         except subprocess.TimeoutExpired:
             self.log_message("Installer timed out", "error")
             return False
         except Exception as e:
             self.log_message(f"Installer error: {str(e)}", "error")
             return False
-    
+
     def check_for_updates_async(self):
         """Check for updates in background thread"""
         def check_updates():
@@ -2470,48 +2500,48 @@ class ExilesInstaller:
                 self.check_for_updates()
             except Exception as e:
                 logger.error(f"Update check failed: {e}")
-        
+
         # Run update check in background thread so UI doesn't freeze
         update_thread = threading.Thread(target=check_updates, daemon=True)
         update_thread.start()
-    
+
     def check_for_updates(self):
         """Check for installer and apps updates from squad VPS"""
         try:
             self.log_message("◆ Checking for updates from squad VPS...", "info")
-            
+
             # Check installer version
             response = requests.get(
                 self.update_config['check_url'],
                 timeout=10,
                 headers={'User-Agent': 'ExilesInstaller/1.0.0'}
             )
-            
+
             if response.status_code == 200:
                 version_data = response.json()
                 latest_version = version_data.get('version', '1.0.0')
                 apps_updated = version_data.get('apps_updated', '')
-                
+
                 if latest_version != self.update_config['current_version']:
                     self.log_message(f"◆ New installer version available: {latest_version}", "warning")
                     self.prompt_installer_update(latest_version)
-                
+
                 # Check if apps database is newer
                 current_apps_date = self.apps_config.get('metadata', {}).get('updated', '')
                 if apps_updated and apps_updated != current_apps_date:
                     self.log_message(f"◆ Updated apps database available: {apps_updated}", "warning")
                     self.prompt_apps_update()
-                
+
                 if latest_version == self.update_config['current_version'] and apps_updated == current_apps_date:
                     self.log_message("◆ All systems up to date", "success")
             else:
                 self.log_message(f"◆ Update check failed: HTTP {response.status_code}", "warning")
-                
+
         except requests.exceptions.RequestException as e:
             self.log_message(f"◆ Cannot reach squad VPS: {str(e)}", "warning")
         except Exception as e:
             self.log_message(f"◆ Update check error: {str(e)}", "error")
-    
+
     def prompt_installer_update(self, new_version):
         """Prompt user to update installer"""
         def update_installer():
@@ -2522,10 +2552,10 @@ class ExilesInstaller:
             )
             if result:
                 self.download_installer_update(new_version)
-        
+
         # Schedule UI update for main thread
         self.root.after(0, update_installer)
-    
+
     def prompt_apps_update(self):
         """Prompt user to update apps database"""
         def update_apps():
@@ -2536,19 +2566,19 @@ class ExilesInstaller:
             )
             if result:
                 self.download_apps_update()
-        
+
         # Schedule UI update for main thread
         self.root.after(0, update_apps)
-    
+
     def download_installer_update(self, new_version):
         """Download and prepare installer update"""
         try:
             self.log_message(f"◆ Downloading installer update v{new_version}...", "info")
-            
+
             # Create updates directory
             updates_dir = Path.home() / "Downloads" / "ExilesHUD" / "Updates"
             updates_dir.mkdir(parents=True, exist_ok=True)
-            
+
             # Download new installer
             response = requests.get(
                 self.update_config['download_url'],
@@ -2557,16 +2587,16 @@ class ExilesInstaller:
                 headers={'User-Agent': 'ExilesInstaller/1.0.0'}
             )
             response.raise_for_status()
-            
+
             installer_path = updates_dir / f"ExilesInstaller_v{new_version}.exe"
-            
+
             with open(installer_path, 'wb') as f:
                 for chunk in response.iter_content(chunk_size=8192):
                     if chunk:
                         f.write(chunk)
-            
+
             self.log_message(f"◆ Update downloaded: {installer_path}", "success")
-            
+
             # Offer to run the update
             result = messagebox.askyesno(
                 "Update Ready",
@@ -2574,50 +2604,50 @@ class ExilesInstaller:
                 "Would you like to run the update now?\n"
                 "(This will close the current installer)"
             )
-            
+
             if result:
                 subprocess.Popen([str(installer_path)])
                 self.root.destroy()
-                
+
         except Exception as e:
             self.log_message(f"◆ Update download failed: {str(e)}", "error")
-    
+
     def download_apps_update(self):
         """Download updated apps database"""
         try:
             self.log_message("◆ Downloading updated apps database...", "info")
-            
+
             response = requests.get(
                 self.update_config['apps_url'],
                 timeout=60,
                 headers={'User-Agent': 'ExilesInstaller/1.0.0'}
             )
             response.raise_for_status()
-            
+
             # Backup current apps.json
             backup_path = Path('apps.json.backup')
             if Path('apps.json').exists():
                 Path('apps.json').rename(backup_path)
-            
+
             # Save new apps.json
             new_config = response.json()
             with open('apps.json', 'w') as f:
                 json.dump(new_config, f, indent=2)
-            
+
             # Reload configuration
             self.apps_config = new_config
-            
+
             self.log_message("◆ Apps database updated successfully", "success")
-            
+
             # Refresh app list in UI
             self.update_app_list()
-            
+
             messagebox.showinfo(
                 "Update Complete",
                 "Apps database has been updated!\n"
                 "The application list has been refreshed with the latest tools."
             )
-            
+
         except Exception as e:
             self.log_message(f"◆ Apps update failed: {str(e)}", "error")
             # Restore backup if it exists
@@ -2625,22 +2655,22 @@ class ExilesInstaller:
             if backup_path.exists():
                 backup_path.rename('apps.json')
                 self.log_message("◆ Restored previous apps database", "info")
-    
+
     def manual_update_check(self):
         """Manually trigger update check"""
         self.log_message("◆ Manual update check requested", "info")
         self.check_for_updates_async()
-    
+
     def update_app_list(self):
         """Refresh the application list in the UI"""
         try:
             # Clear current selection
             self.selected_apps.clear()
-            
+
             # Reload the apps listbox if it exists
             if hasattr(self, 'apps_listbox'):
                 self.apps_listbox.delete(0, tk.END)
-                
+
                 # Repopulate with updated apps
                 apps = self.get_current_game_apps()
                 for app in apps:
@@ -2649,59 +2679,59 @@ class ExilesInstaller:
                     status = '□' if optional else '■'
                     display_text = f"{status} {name}"
                     self.apps_listbox.insert(tk.END, display_text)
-                    
+
                     # Auto-select non-optional apps
                     if not optional:
                         self.selected_apps.add(app.get('id'))
-                        
+
             self.log_message("◆ Application list refreshed", "info")
-            
+
         except Exception as e:
             self.log_message(f"◆ Failed to refresh app list: {str(e)}", "error")
-            
+
     def run_post_steps(self, app):
         """Run post-installation steps"""
         post_steps = app.get('post_steps', [])
         if not post_steps:
             return True
-            
+
         self.log_message("Running post-installation steps...", "info")
-        
+
         try:
             for step in post_steps:
                 step_name = step.get('Name', 'Unknown')
                 script = step.get('Script', '')
-                
+
                 if not script:
                     continue
-                    
+
                 self.log_message(f"Executing step: {step_name}", "info")
-                
+
                 # Run PowerShell script (hide CMD window)
                 cmd = ['powershell', '-Command', script]
                 kwargs = {'capture_output': True, 'text': True, 'timeout': 120}
-                
+
                 # Hide command window on Windows
                 if platform.system() == "Windows":
                     kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
-                
+
                 result = subprocess.run(cmd, **kwargs)
-                
+
                 if result.returncode == 0:
                     self.log_message(f"Step '{step_name}' completed", "success")
                 else:
                     self.log_message(f"Step '{step_name}' failed: {result.stderr}", "warning")
-                    
+
             return True
-            
+
         except Exception as e:
             self.log_message(f"Post-steps error: {str(e)}", "error")
             return False
-            
+
     def log_message(self, message, level="info"):
         """Add a message to the progress log"""
         timestamp = datetime.now().strftime("%H:%M:%S")
-        
+
         # Color coding
         color_map = {
             "info": self.colors['text_primary'],
@@ -2709,13 +2739,13 @@ class ExilesInstaller:
             "warning": self.colors['warning'],
             "error": self.colors['error']
         }
-        
+
         color = color_map.get(level, self.colors['text_primary'])
         formatted_message = f"[{timestamp}] {message}\n"
-        
+
         # Thread-safe UI update
         self.root.after(0, self._update_progress_text, formatted_message, color)
-        
+
         # Also log to file
         if level == "error":
             logger.error(message)
@@ -2723,45 +2753,45 @@ class ExilesInstaller:
             logger.warning(message)
         else:
             logger.info(message)
-            
+
     def _update_progress_text(self, message, color):
         """Update progress text widget (thread-safe)"""
         self.progress_text.configure(state='normal')
         self.progress_text.insert(tk.END, message)
-        
+
         # Color the last line
         last_line_start = self.progress_text.index("end-2c linestart")
         last_line_end = self.progress_text.index("end-2c lineend")
-        
+
         self.progress_text.tag_add(f"color_{color}", last_line_start, last_line_end)
         self.progress_text.tag_configure(f"color_{color}", foreground=color)
-        
+
         self.progress_text.configure(state='disabled')
         self.progress_text.see(tk.END)
-        
+
     def update_progress(self, percentage):
         """Update the progress bar (thread-safe)"""
         self.root.after(0, lambda: self.progress_bar.configure(value=percentage))
-        
+
     def update_status(self, status):
         """Update the status label (thread-safe)"""
         self.root.after(0, lambda: self.status_label.configure(text=status))
-        
+
     def installation_complete(self, completed, total):
         """Handle installation completion with enhanced summary"""
         self.install_button.configure(state='normal', text="► INSTALL SELECTED")
         self.update_progress(100)
-        
+
         # Get current game info for context
         games = self.apps_config.get("games", {})
         current_game_data = games.get(self.current_game, {})
         game_name = current_game_data.get("name", self.current_game)
-        
+
         # Enhanced completion logging
         self.log_message("\n" + "═" * 70, "info")
         self.log_message("🎯 INSTALLATION SUMMARY", "info")
         self.log_message("═" * 70, "info")
-        
+
         if completed == total:
             # Full success
             self.update_status(f"Installation completed! {completed}/{total} applications installed successfully.")
@@ -2771,7 +2801,7 @@ class ExilesInstaller:
             self.log_message("• Web tools opened in browser - remember to bookmark them!", "info")
             self.log_message("• Check application folders for configuration guides", "info")
             self.log_message(f"• Start playing {game_name} with your enhanced toolset!", "info")
-            
+
             # Enhanced success dialog
             success_msg = (f"🎉 {game_name} Setup Complete!\n\n"
                           f"Successfully installed all {completed} tools.\n\n"
@@ -2780,7 +2810,7 @@ class ExilesInstaller:
                           f"• Bookmark any web tools that opened\n"
                           f"• Start exploring {game_name}!")
             messagebox.showinfo("Installation Complete", success_msg)
-            
+
         else:
             # Partial success
             failed = total - completed
@@ -2794,7 +2824,7 @@ class ExilesInstaller:
             self.log_message("• Try running the installer as Administrator", "info")
             self.log_message("• Check your internet connection", "info")
             self.log_message("• Temporarily disable antivirus during installation", "info")
-            
+
             # Enhanced warning dialog
             warning_msg = (f"⚠️ {game_name} Setup Partially Complete\n\n"
                           f"Installed: {completed} out of {total} tools\n"
@@ -2802,9 +2832,9 @@ class ExilesInstaller:
                           f"Check the installation log for details.\n"
                           f"You can try re-running the failed installations.")
             messagebox.showwarning("Installation Complete", warning_msg)
-            
+
         self.log_message("═" * 70, "info")
-            
+
     def show_settings(self):
         """Show settings dialog"""
         settings_window = tk.Toplevel(self.root)
@@ -2812,15 +2842,15 @@ class ExilesInstaller:
         settings_window.geometry("600x500")
         settings_window.resizable(False, False)
         settings_window.configure(bg=self.colors['bg_primary'])
-        
+
         # Center the window
         settings_window.transient(self.root)
         settings_window.grab_set()
-        
+
         # Main container
         main_frame = tk.Frame(settings_window, bg=self.colors['bg_primary'])
         main_frame.pack(fill='both', expand=True, padx=20, pady=20)
-        
+
         # Title
         title_label = tk.Label(
             main_frame,
@@ -2830,43 +2860,43 @@ class ExilesInstaller:
             bg=self.colors['bg_primary']
         )
         title_label.pack(pady=(0, 20))
-        
+
         # Create notebook for tabbed interface
         notebook = ttk.Notebook(main_frame)
         notebook.pack(fill='both', expand=True, pady=(0, 10))
-        
+
         # Configure notebook style
         style = ttk.Style()
         style.theme_use('clam')
         style.configure('TNotebook', background=self.colors['bg_secondary'])
-        style.configure('TNotebook.Tab', background=self.colors['bg_panel'], 
+        style.configure('TNotebook.Tab', background=self.colors['bg_panel'],
                        foreground=self.colors['text_primary'], padding=[10, 5])
         style.map('TNotebook.Tab', background=[('selected', self.colors['accent_secondary'])])
-        
+
         # General Settings Tab
         general_frame = tk.Frame(notebook, bg=self.colors['bg_secondary'])
         notebook.add(general_frame, text="General")
         self.create_general_settings(general_frame)
-        
+
         # Downloads Tab
         downloads_frame = tk.Frame(notebook, bg=self.colors['bg_secondary'])
         notebook.add(downloads_frame, text="Downloads")
         self.create_downloads_settings(downloads_frame)
-        
+
         # Updates Tab
         updates_frame = tk.Frame(notebook, bg=self.colors['bg_secondary'])
         notebook.add(updates_frame, text="Updates")
         self.create_updates_settings(updates_frame)
-        
+
         # Advanced Tab
         advanced_frame = tk.Frame(notebook, bg=self.colors['bg_secondary'])
         notebook.add(advanced_frame, text="Advanced")
         self.create_advanced_settings(advanced_frame)
-        
+
         # Button frame
         button_frame = tk.Frame(main_frame, bg=self.colors['bg_primary'])
         button_frame.pack(fill='x', pady=(10, 0))
-        
+
         # Save and Cancel buttons
         tk.Button(
             button_frame,
@@ -2880,7 +2910,7 @@ class ExilesInstaller:
             pady=8,
             padx=20
         ).pack(side='right', padx=(10, 0))
-        
+
         tk.Button(
             button_frame,
             text="Cancel",
@@ -2893,19 +2923,19 @@ class ExilesInstaller:
             pady=8,
             padx=20
         ).pack(side='right')
-        
+
         # Load current settings
         self.load_current_settings()
-    
+
     def create_general_settings(self, parent):
         """Create general settings tab"""
         container = tk.Frame(parent, bg=self.colors['bg_secondary'])
         container.pack(fill='both', expand=True, padx=20, pady=20)
-        
+
         # Download Directory
         dir_frame = tk.Frame(container, bg=self.colors['bg_secondary'])
         dir_frame.pack(fill='x', pady=(0, 15))
-        
+
         tk.Label(
             dir_frame,
             text="Default Download Directory:",
@@ -2913,12 +2943,12 @@ class ExilesInstaller:
             fg=self.colors['text_primary'],
             bg=self.colors['bg_secondary']
         ).pack(anchor='w')
-        
+
         dir_input_frame = tk.Frame(dir_frame, bg=self.colors['bg_secondary'])
         dir_input_frame.pack(fill='x', pady=(5, 0))
-        
+
         self.download_dir_var = tk.StringVar(value=str(Path.home() / "Downloads" / "ExilesHUD"))
-        
+
         tk.Entry(
             dir_input_frame,
             textvariable=self.download_dir_var,
@@ -2929,7 +2959,7 @@ class ExilesInstaller:
             bd=0,
             relief='flat'
         ).pack(side='left', fill='x', expand=True, ipady=5)
-        
+
         tk.Button(
             dir_input_frame,
             text="Browse",
@@ -2942,11 +2972,11 @@ class ExilesInstaller:
             pady=5,
             padx=10
         ).pack(side='right', padx=(10, 0))
-        
+
         # Installation Behavior
         install_frame = tk.Frame(container, bg=self.colors['bg_secondary'])
         install_frame.pack(fill='x', pady=(0, 15))
-        
+
         tk.Label(
             install_frame,
             text="Installation Options:",
@@ -2954,7 +2984,7 @@ class ExilesInstaller:
             fg=self.colors['text_primary'],
             bg=self.colors['bg_secondary']
         ).pack(anchor='w')
-        
+
         self.run_installers_var = tk.BooleanVar(value=True)
         tk.Checkbutton(
             install_frame,
@@ -2967,7 +2997,7 @@ class ExilesInstaller:
             activebackground=self.colors['bg_secondary'],
             activeforeground=self.colors['text_primary']
         ).pack(anchor='w', pady=(5, 0))
-        
+
         self.cleanup_downloads_var = tk.BooleanVar(value=False)
         tk.Checkbutton(
             install_frame,
@@ -2980,16 +3010,16 @@ class ExilesInstaller:
             activebackground=self.colors['bg_secondary'],
             activeforeground=self.colors['text_primary']
         ).pack(anchor='w', pady=(2, 0))
-    
+
     def create_downloads_settings(self, parent):
         """Create downloads settings tab"""
         container = tk.Frame(parent, bg=self.colors['bg_secondary'])
         container.pack(fill='both', expand=True, padx=20, pady=20)
-        
+
         # Download Performance
         perf_frame = tk.Frame(container, bg=self.colors['bg_secondary'])
         perf_frame.pack(fill='x', pady=(0, 15))
-        
+
         tk.Label(
             perf_frame,
             text="Download Performance:",
@@ -2997,11 +3027,11 @@ class ExilesInstaller:
             fg=self.colors['text_primary'],
             bg=self.colors['bg_secondary']
         ).pack(anchor='w')
-        
+
         # Concurrent downloads
         concurrent_frame = tk.Frame(perf_frame, bg=self.colors['bg_secondary'])
         concurrent_frame.pack(fill='x', pady=(5, 10))
-        
+
         tk.Label(
             concurrent_frame,
             text="Maximum concurrent downloads:",
@@ -3009,7 +3039,7 @@ class ExilesInstaller:
             fg=self.colors['text_primary'],
             bg=self.colors['bg_secondary']
         ).pack(side='left')
-        
+
         self.max_concurrent_var = tk.IntVar(value=3)
         concurrent_spinner = tk.Spinbox(
             concurrent_frame,
@@ -3025,11 +3055,11 @@ class ExilesInstaller:
             width=5
         )
         concurrent_spinner.pack(side='right')
-        
+
         # Timeout settings
         timeout_frame = tk.Frame(perf_frame, bg=self.colors['bg_secondary'])
         timeout_frame.pack(fill='x', pady=(0, 10))
-        
+
         tk.Label(
             timeout_frame,
             text="Download timeout (seconds):",
@@ -3037,7 +3067,7 @@ class ExilesInstaller:
             fg=self.colors['text_primary'],
             bg=self.colors['bg_secondary']
         ).pack(side='left')
-        
+
         self.download_timeout_var = tk.IntVar(value=300)
         timeout_spinner = tk.Spinbox(
             timeout_frame,
@@ -3054,11 +3084,11 @@ class ExilesInstaller:
             width=8
         )
         timeout_spinner.pack(side='right')
-        
+
         # Verification Options
         verify_frame = tk.Frame(container, bg=self.colors['bg_secondary'])
         verify_frame.pack(fill='x', pady=(0, 15))
-        
+
         tk.Label(
             verify_frame,
             text="File Verification:",
@@ -3066,7 +3096,7 @@ class ExilesInstaller:
             fg=self.colors['text_primary'],
             bg=self.colors['bg_secondary']
         ).pack(anchor='w')
-        
+
         self.verify_checksums_var = tk.BooleanVar(value=True)
         tk.Checkbutton(
             verify_frame,
@@ -3079,16 +3109,16 @@ class ExilesInstaller:
             activebackground=self.colors['bg_secondary'],
             activeforeground=self.colors['text_primary']
         ).pack(anchor='w', pady=(5, 0))
-    
+
     def create_updates_settings(self, parent):
         """Create updates settings tab"""
         container = tk.Frame(parent, bg=self.colors['bg_secondary'])
         container.pack(fill='both', expand=True, padx=20, pady=20)
-        
+
         # Update Check Settings
         update_frame = tk.Frame(container, bg=self.colors['bg_secondary'])
         update_frame.pack(fill='x', pady=(0, 15))
-        
+
         tk.Label(
             update_frame,
             text="Automatic Updates:",
@@ -3096,7 +3126,7 @@ class ExilesInstaller:
             fg=self.colors['text_primary'],
             bg=self.colors['bg_secondary']
         ).pack(anchor='w')
-        
+
         self.auto_check_updates_var = tk.BooleanVar(value=True)
         tk.Checkbutton(
             update_frame,
@@ -3109,7 +3139,7 @@ class ExilesInstaller:
             activebackground=self.colors['bg_secondary'],
             activeforeground=self.colors['text_primary']
         ).pack(anchor='w', pady=(5, 0))
-        
+
         self.notify_updates_var = tk.BooleanVar(value=True)
         tk.Checkbutton(
             update_frame,
@@ -3122,11 +3152,11 @@ class ExilesInstaller:
             activebackground=self.colors['bg_secondary'],
             activeforeground=self.colors['text_primary']
         ).pack(anchor='w', pady=(2, 0))
-        
+
         # Server Settings
         server_frame = tk.Frame(container, bg=self.colors['bg_secondary'])
         server_frame.pack(fill='x', pady=(0, 15))
-        
+
         tk.Label(
             server_frame,
             text="Update Server:",
@@ -3134,7 +3164,7 @@ class ExilesInstaller:
             fg=self.colors['text_primary'],
             bg=self.colors['bg_secondary']
         ).pack(anchor='w')
-        
+
         tk.Label(
             server_frame,
             text="Server URL:",
@@ -3142,7 +3172,7 @@ class ExilesInstaller:
             fg=self.colors['text_primary'],
             bg=self.colors['bg_secondary']
         ).pack(anchor='w', pady=(5, 2))
-        
+
         self.update_server_var = tk.StringVar(value="https://downloads.exiles.one")
         tk.Entry(
             server_frame,
@@ -3154,16 +3184,16 @@ class ExilesInstaller:
             bd=0,
             relief='flat'
         ).pack(fill='x', pady=(0, 10), ipady=5)
-    
+
     def create_advanced_settings(self, parent):
         """Create advanced settings tab"""
         container = tk.Frame(parent, bg=self.colors['bg_secondary'])
         container.pack(fill='both', expand=True, padx=20, pady=20)
-        
+
         # Logging Settings
         log_frame = tk.Frame(container, bg=self.colors['bg_secondary'])
         log_frame.pack(fill='x', pady=(0, 15))
-        
+
         tk.Label(
             log_frame,
             text="Logging:",
@@ -3171,10 +3201,10 @@ class ExilesInstaller:
             fg=self.colors['text_primary'],
             bg=self.colors['bg_secondary']
         ).pack(anchor='w')
-        
+
         level_frame = tk.Frame(log_frame, bg=self.colors['bg_secondary'])
         level_frame.pack(fill='x', pady=(5, 0))
-        
+
         tk.Label(
             level_frame,
             text="Log level:",
@@ -3182,7 +3212,7 @@ class ExilesInstaller:
             fg=self.colors['text_primary'],
             bg=self.colors['bg_secondary']
         ).pack(side='left')
-        
+
         self.log_level_var = tk.StringVar(value="INFO")
         log_combo = ttk.Combobox(
             level_frame,
@@ -3193,11 +3223,11 @@ class ExilesInstaller:
             width=15
         )
         log_combo.pack(side='right')
-        
+
         # Developer Options
         dev_frame = tk.Frame(container, bg=self.colors['bg_secondary'])
         dev_frame.pack(fill='x', pady=(15, 0))
-        
+
         tk.Label(
             dev_frame,
             text="Developer Options:",
@@ -3205,7 +3235,7 @@ class ExilesInstaller:
             fg=self.colors['text_primary'],
             bg=self.colors['bg_secondary']
         ).pack(anchor='w')
-        
+
         self.debug_mode_var = tk.BooleanVar(value=False)
         tk.Checkbutton(
             dev_frame,
@@ -3218,7 +3248,7 @@ class ExilesInstaller:
             activebackground=self.colors['bg_secondary'],
             activeforeground=self.colors['text_primary']
         ).pack(anchor='w', pady=(5, 0))
-        
+
         self.dry_run_var = tk.BooleanVar(value=False)
         tk.Checkbutton(
             dev_frame,
@@ -3231,7 +3261,7 @@ class ExilesInstaller:
             activebackground=self.colors['bg_secondary'],
             activeforeground=self.colors['text_primary']
         ).pack(anchor='w', pady=(2, 0))
-    
+
     def browse_download_directory(self):
         """Browse for download directory"""
         from tkinter import filedialog
@@ -3241,7 +3271,7 @@ class ExilesInstaller:
         )
         if directory:
             self.download_dir_var.set(directory)
-    
+
     def load_settings(self):
         """Load settings from configuration file"""
         default_settings = {
@@ -3258,7 +3288,7 @@ class ExilesInstaller:
             'debug_mode': False,
             'dry_run': False
         }
-        
+
         try:
             config_path = Path('exiles_config.json')
             if config_path.exists():
@@ -3270,9 +3300,9 @@ class ExilesInstaller:
                 logger.info("Using default settings")
         except Exception as e:
             logger.warning(f"Failed to load settings: {e}, using defaults")
-        
+
         return default_settings
-    
+
     def load_installation_states(self):
         """Load installation state tracking from JSON file"""
         try:
@@ -3287,7 +3317,7 @@ class ExilesInstaller:
         except Exception as e:
             logger.warning(f"Failed to load installation states: {e}")
             return {"installed_apps": {}, "last_updated": None}
-    
+
     def save_installation_states(self):
         """Save current installation states to JSON file"""
         try:
@@ -3297,12 +3327,12 @@ class ExilesInstaller:
             logger.debug("Installation states saved")
         except Exception as e:
             logger.error(f"Failed to save installation states: {e}")
-    
+
     def detect_app_installation(self, app):
         """Detect if an app is installed on the system"""
         app_id = app.get('id', '')
         app_name = app.get('name', '')
-        
+
         try:
             # Windows-specific detection logic
             if platform.system() == "Windows":
@@ -3310,16 +3340,16 @@ class ExilesInstaller:
             else:
                 # Linux/Mac detection (simplified)
                 return self._detect_unix_app(app)
-                
+
         except Exception as e:
             logger.debug(f"Error detecting {app_name}: {e}")
             return False, None, None
-    
+
     def _detect_windows_app(self, app):
         """Windows-specific app detection using registry and file paths"""
         app_id = app.get('id', '')
         app_name = app.get('name', '')
-        
+
         # Common installation paths to check
         common_paths = [
             f"C:\\Program Files\\{app_name}",
@@ -3327,12 +3357,12 @@ class ExilesInstaller:
             f"C:\\Users\\{os.environ.get('USERNAME', 'User')}\\AppData\\Local\\{app_name}",
             f"C:\\Users\\{os.environ.get('USERNAME', 'User')}\\AppData\\Roaming\\{app_name}"
         ]
-        
+
         # App-specific detection logic using app IDs from apps.json
         detection_rules = {
             'EDMC': {  # Fixed: was 'EDMarketConnector'
                 'paths': [
-                    'C:\\Program Files (x86)\\EDMarketConnector', 
+                    'C:\\Program Files (x86)\\EDMarketConnector',
                     'C:\\Users\\%USERNAME%\\AppData\\Local\\EDMarketConnector',
                     'C:\\Program Files\\EDMarketConnector'
                 ],
@@ -3348,7 +3378,7 @@ class ExilesInstaller:
             },
             'EDDiscovery': {
                 'paths': [
-                    'C:\\Program Files (x86)\\EDDiscovery', 
+                    'C:\\Program Files (x86)\\EDDiscovery',
                     'C:\\Users\\%USERNAME%\\AppData\\Local\\EDDiscovery',
                     'C:\\Program Files\\EDDiscovery'
                 ],
@@ -3411,17 +3441,17 @@ class ExilesInstaller:
                 'executables': ['pyfa.exe']
             }
         }
-        
+
         rules = detection_rules.get(app_id, {})
         paths_to_check = rules.get('paths', common_paths)
         executables = rules.get('executables', [f"{app_name}.exe"])
-        
+
         # Expand environment variables in paths
         expanded_paths = []
         for path in paths_to_check:
             expanded_path = os.path.expandvars(path)
             expanded_paths.append(expanded_path)
-        
+
         # Check for installation
         for path in expanded_paths:
             if os.path.exists(path):
@@ -3432,25 +3462,25 @@ class ExilesInstaller:
                         # Try to get version info
                         version = self._get_file_version(exe_path)
                         return True, version, exe_path
-                
+
                 # If directory exists but no specific exe found, still consider installed
                 return True, "Unknown", path
-        
+
         return False, None, None
-    
+
     def _detect_unix_app(self, app):
         """Unix-like systems app detection (simplified)"""
         app_id = app.get('id', '')
-        
+
         # Check common Unix locations
         common_commands = {
             'AutoHotkey': 'autohotkey',
             '7zip': '7z',
             'PYFA': 'pyfa'
         }
-        
+
         command = common_commands.get(app_id, app_id.lower())
-        
+
         try:
             # Check if command exists in PATH
             result = subprocess.run(['which', command], capture_output=True, text=True)
@@ -3461,9 +3491,9 @@ class ExilesInstaller:
                 return True, version, result.stdout.strip()
         except:
             pass
-        
+
         return False, None, None
-    
+
     def _get_file_version(self, file_path):
         """Extract version info from Windows executable"""
         try:
@@ -3473,58 +3503,58 @@ class ExilesInstaller:
                 if size:
                     res = ctypes.create_string_buffer(size)
                     ctypes.windll.version.GetFileVersionInfoW(file_path, None, size, res)
-                    
+
                     # Extract version numbers
                     r = ctypes.c_uint()
                     l = ctypes.c_uint()
                     ctypes.windll.version.VerQueryValueW(res, '\\', ctypes.byref(r), ctypes.byref(l))
-                    
+
                     if r:
                         version_struct = ctypes.cast(r, ctypes.POINTER(ctypes.c_uint * 4)).contents
                         version = f"{version_struct[1] >> 16}.{version_struct[1] & 0xFFFF}.{version_struct[0] >> 16}.{version_struct[0] & 0xFFFF}"
                         return version
         except:
             pass
-        
+
         # Fallback: get file modification date as version indicator
         try:
             mtime = os.path.getmtime(file_path)
             return datetime.fromtimestamp(mtime).strftime("%Y-%m-%d")
         except:
             return "Unknown"
-    
+
     def check_remote_version(self, app):
         """Check latest version available from remote sources"""
         try:
             install_methods = app.get('install_methods', [])
-            
+
             for method in install_methods:
                 method_type = method.get('type', '')
-                
+
                 if method_type == 'github':
                     return self._check_github_version(method)
                 elif method_type == 'winget':
                     return self._check_winget_version(method)
                 elif method_type == 'url':
                     return self._check_url_version(method, app)
-            
+
             # No supported version checking method
             return None
-            
+
         except Exception as e:
             logger.debug(f"Error checking remote version for {app.get('name', 'unknown')}: {e}")
             return None
-    
+
     def _check_github_version(self, method):
         """Check latest version from GitHub releases"""
         try:
             repo = method.get('github_repo', '')
             if not repo:
                 return None
-            
+
             url = f"https://api.github.com/repos/{repo}/releases/latest"
             headers = {'Accept': 'application/vnd.github.v3+json'}
-            
+
             response = requests.get(url, headers=headers, timeout=10)
             if response.status_code == 200:
                 data = response.json()
@@ -3532,35 +3562,35 @@ class ExilesInstaller:
                 # Clean version string (remove 'v' prefix if present)
                 version = tag_name.lstrip('v')
                 return version
-            
+
         except Exception as e:
             logger.debug(f"Error checking GitHub version: {e}")
-        
+
         return None
-    
+
     def _check_winget_version(self, method):
         """Check latest version from winget"""
         try:
             winget_id = method.get('winget_id', '')
             if not winget_id:
                 return None
-            
+
             # Run winget show command to get version info (hide CMD window)
             kwargs = {
                 'capture_output': True,
                 'text': True,
                 'timeout': 30
             }
-            
+
             # Hide command window on Windows
             if platform.system() == "Windows":
                 kwargs['creationflags'] = subprocess.CREATE_NO_WINDOW
-            
+
             result = subprocess.run(
                 ['winget', 'show', winget_id, '--exact'],
                 **kwargs
             )
-            
+
             if result.returncode == 0:
                 # Parse winget output for version
                 lines = result.stdout.split('\n')
@@ -3568,49 +3598,49 @@ class ExilesInstaller:
                     if 'Version:' in line:
                         version = line.split('Version:')[1].strip()
                         return version
-            
+
         except Exception as e:
             logger.debug(f"Error checking winget version: {e}")
-        
+
         return None
-    
+
     def _check_url_version(self, method, app):
         """Check version from direct URL (limited support)"""
         # This is challenging without specific version endpoints
         # For now, return None - could be enhanced with web scraping
         return None
-    
+
     def update_app_statuses_async(self):
         """Update app installation statuses asynchronously"""
         def update_statuses():
             try:
                 self.log_message("🔍 Checking installation statuses...", "info")
-                
+
                 # Handle both old and new app configuration formats
                 apps_to_check = []
-                
+
                 # Check if apps are nested under games (new format)
                 games_config = self.apps_config.get('games', {})
                 for game_id, game_data in games_config.items():
                     game_apps = game_data.get('apps', [])
                     apps_to_check.extend(game_apps)
-                
+
                 # Fallback: Check if apps are in flat structure (legacy format)
                 if not apps_to_check and 'apps' in self.apps_config:
                     apps_to_check = self.apps_config.get('apps', [])
-                
+
                 logger.debug(f"Found {len(apps_to_check)} apps to check for status updates")
-                
+
                 for app in apps_to_check:
                         app_id = app.get('id', '')
                         app_name = app.get('name', '')
-                        
+
                         # Detect installation
                         is_installed, installed_version, install_path = self.detect_app_installation(app)
-                        
+
                         # Check remote version
                         remote_version = self.check_remote_version(app)
-                        
+
                         # Determine status
                         if is_installed:
                             if remote_version and installed_version and installed_version != "Unknown":
@@ -3623,7 +3653,7 @@ class ExilesInstaller:
                                 status = "installed"
                         else:
                             status = "not_installed"
-                        
+
                         # Update status
                         self.app_statuses[app_id] = {
                             'status': status,
@@ -3632,7 +3662,7 @@ class ExilesInstaller:
                             'install_path': install_path,
                             'last_checked': datetime.now().isoformat()
                         }
-                        
+
                         # Update installation states
                         if is_installed:
                             self.installation_states["installed_apps"][app_id] = {
@@ -3644,32 +3674,32 @@ class ExilesInstaller:
                         else:
                             # Remove from installed apps if not detected
                             self.installation_states["installed_apps"].pop(app_id, None)
-                
+
                 # Save updated states
                 self.save_installation_states()
-                
+
                 # Update UI on main thread
                 self.root.after(0, self.refresh_app_status_display)
-                
+
                 self.log_message("✅ Installation status check complete", "success")
-                
+
             except Exception as e:
                 logger.error(f"Error updating app statuses: {e}")
                 self.root.after(0, lambda: self.log_message(f"❌ Error checking app statuses: {e}", "error"))
-        
+
         # Run in background thread
         thread = threading.Thread(target=update_statuses, daemon=True)
         thread.start()
-    
+
     def refresh_app_status_display(self):
         """Refresh the app display with updated status information"""
         try:
             apps_checked = len(self.app_statuses)
             installed_count = sum(1 for status in self.app_statuses.values() if status['status'] == 'installed')
             update_count = sum(1 for status in self.app_statuses.values() if status['status'] == 'update_available')
-            
+
             self.log_message(f"📊 Status: {installed_count} installed, {update_count} updates available ({apps_checked} total)", "info")
-            
+
             # Update the UI elements with current status information
             for app_id, app_status in self.app_statuses.items():
                 if app_id in self.app_cards:
@@ -3677,7 +3707,7 @@ class ExilesInstaller:
                     status = app_status.get('status', 'unknown')
                     installed_version = app_status.get('installed_version', None)
                     remote_version = app_status.get('remote_version', None)
-                    
+
                     # Update status display based on current status
                     if status == 'installed':
                         status_icon = "✅"
@@ -3702,11 +3732,11 @@ class ExilesInstaller:
                         status_text = "UNKNOWN"
                         status_color = self.colors['info']
                         version_text = ""
-                    
+
                     # Update the status components if they exist
                     if 'status_icon' in card_data and card_data['status_icon'].winfo_exists():
                         card_data['status_icon'].configure(text=status_icon, fg=status_color)
-                    
+
                     if 'version_label' in card_data and card_data['version_label']:
                         if card_data['version_label'].winfo_exists():
                             if version_text:
@@ -3714,10 +3744,10 @@ class ExilesInstaller:
                                 card_data['version_label'].pack(pady=(1, 0))
                             else:
                                 card_data['version_label'].pack_forget()
-        
+
         except Exception as e:
             logger.error(f"Error refreshing app status display: {e}")
-    
+
     def load_current_settings(self):
         """Load current settings into dialog variables"""
         if hasattr(self, 'download_dir_var'):
@@ -3733,7 +3763,7 @@ class ExilesInstaller:
             self.log_level_var.set(self.settings.get('log_level', 'INFO'))
             self.debug_mode_var.set(self.settings.get('debug_mode', False))
             self.dry_run_var.set(self.settings.get('dry_run', False))
-    
+
     def save_settings(self, settings_window):
         """Save settings and close dialog"""
         try:
@@ -3752,10 +3782,10 @@ class ExilesInstaller:
                 'debug_mode': self.debug_mode_var.get(),
                 'dry_run': self.dry_run_var.get()
             }
-            
+
             # Update internal settings
             self.settings.update(new_settings)
-            
+
             # Update the update config with new server URL
             base_url = self.update_server_var.get().rstrip('/')
             self.update_config.update({
@@ -3763,25 +3793,25 @@ class ExilesInstaller:
                 'download_url': f'{base_url}/api/installer/download',
                 'apps_url': f'{base_url}/api/apps.json'
             })
-            
+
             # Update logging level
             log_level = getattr(logging, new_settings['log_level'], logging.INFO)
             logging.getLogger().setLevel(log_level)
             logger.setLevel(log_level)
-            
+
             # Save to config file
             config_path = Path('exiles_config.json')
             with open(config_path, 'w') as f:
                 json.dump(new_settings, f, indent=2)
-            
+
             self.log_message("◆ Settings saved successfully", "success")
             messagebox.showinfo("Settings", "Settings saved successfully!")
             settings_window.destroy()
-            
+
         except Exception as e:
             self.log_message(f"◆ Failed to save settings: {str(e)}", "error")
             messagebox.showerror("Error", f"Failed to save settings: {str(e)}")
-        
+
     def show_log(self):
         """Open the log file"""
         try:
@@ -3806,7 +3836,7 @@ class ExilesInstaller:
                 messagebox.showinfo("Log", "No log file found.")
         except Exception as e:
             messagebox.showerror("Error", f"Could not open log file: {str(e)}")
-            
+
     def run(self):
         """Start the application"""
         try:
