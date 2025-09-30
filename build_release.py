@@ -14,26 +14,26 @@ import platform
 
 def main():
     """Build and package the Exiles Installer for distribution"""
-    
+
     print("=" * 60)
     print("🚀 EXILES INSTALLER - RELEASE BUILDER")
     print("=" * 60)
     print()
-    
+
     # Check system requirements
     if not check_requirements():
         return False
-    
+
     # Clean previous builds
     clean_build_directory()
-    
+
     # Build the executable
     if not build_executable():
         return False
-    
+
     # Package for distribution
     package_release()
-    
+
     print("✅ Build completed successfully!")
     print(f"📦 Distribution files created in: {Path('dist').absolute()}")
     return True
@@ -41,7 +41,7 @@ def main():
 def check_requirements():
     """Check if all required tools are available"""
     print("🔍 Checking build requirements...")
-    
+
     # Check Python
     try:
         python_version = sys.version_info
@@ -52,7 +52,7 @@ def check_requirements():
     except Exception:
         print("❌ Python not found")
         return False
-    
+
     # Install PyInstaller if needed
     try:
         import PyInstaller
@@ -61,35 +61,36 @@ def check_requirements():
         print("📦 Installing PyInstaller...")
         subprocess.check_call([sys.executable, "-m", "pip", "install", "pyinstaller"])
         print("✅ PyInstaller installed")
-    
+
     return True
 
 def clean_build_directory():
     """Clean previous build artifacts"""
     print("🧹 Cleaning build directory...")
-    
+
     directories_to_clean = ['build', 'dist', '__pycache__']
-    
+
     for dir_name in directories_to_clean:
         if Path(dir_name).exists():
             shutil.rmtree(dir_name)
             print(f"   Removed: {dir_name}")
-    
+
     print("✅ Build directory cleaned")
 
 def build_executable():
     """Build the standalone executable using PyInstaller"""
     print("🔨 Building executable...")
-    
+
     # PyInstaller command with proper Tkinter bundling
     cmd = [
         sys.executable, "-m", "PyInstaller",
-        "--onefile",
+        "--onedir",              # was --onefile
         "--windowed",
+        "--noconfirm",
         "--name=ExilesInstaller",
         "--add-data=src/apps.json:.",
         "--collect-data=tcl",
-        "--collect-data=tk", 
+        "--collect-data=tk",
         "--hidden-import=tkinter",
         "--hidden-import=tkinter.ttk",
         "--hidden-import=tkinter.messagebox",
@@ -100,26 +101,26 @@ def build_executable():
         "--distpath=dist",
         "src/main.py"
     ]
-    
+
     # Add Windows-specific icon if available
     if platform.system() == "Windows":
         icon_path = Path("src/icon.ico")
         if icon_path.exists():
             cmd.extend(["--icon", str(icon_path)])
-    
+
     try:
         result = subprocess.run(cmd, capture_output=True, text=True)
         if result.returncode != 0:
             print("❌ Build failed!")
             print("Error output:", result.stderr)
             return False
-        
+
         # Check if executable was created
         if platform.system() == "Windows":
             exe_path = Path("dist/ExilesInstaller.exe")
         else:
             exe_path = Path("dist/ExilesInstaller")
-            
+
         if exe_path.exists():
             size_mb = exe_path.stat().st_size / (1024 * 1024)
             print(f"✅ Executable created: {exe_path.name} ({size_mb:.1f} MB)")
@@ -127,7 +128,7 @@ def build_executable():
         else:
             print("❌ Executable not found after build")
             return False
-            
+
     except Exception as e:
         print(f"❌ Build error: {e}")
         return False
@@ -135,9 +136,9 @@ def build_executable():
 def package_release():
     """Package the release for distribution"""
     print("📦 Packaging release...")
-    
+
     dist_dir = Path("dist")
-    
+
     # Create release notes
     release_notes = """EXILES INSTALLER - MULTI-GAME EDITION
 
@@ -167,10 +168,10 @@ def package_release():
 
 Made with ❤️ by CMDR Exiles & CMDR Watty
 """
-    
+
     with open(dist_dir / "README.txt", "w", encoding="utf-8") as f:
         f.write(release_notes)
-    
+
     print("✅ Release package ready!")
 
 if __name__ == "__main__":
