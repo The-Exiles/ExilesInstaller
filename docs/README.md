@@ -100,90 +100,6 @@ The Exiles Installer provides a unified interface for installing essential tools
 2. **Star Citizen pilots**: All tools are web-based - bookmark them when they open
 3. **EVE Online capsuleers**: Install PYFA locally, bookmark web tools
 
-## 🔧 Building from Source
-
-### Prerequisites
-- Windows 10/11 (target platform)
-- Python 3.8 or later
-- Internet connection
-
-### Quick Build
-```bash
-# Using the automated build script
-python build_release.py
-```
-
-### Manual Build
-```bash
-# Install dependencies
-pip install -r requirements.txt
-pip install pyinstaller
-
-# Build executable
-cd build
-build_windows.bat
-```
-
-The executable will be created as `dist/ExilesInstaller.exe`
-
-## 📋 Configuration
-
-### Application Catalog
-The application catalog is defined in `src/apps.json` with a multi-game structure:
-
-```json
-{
-  "games": {
-    "elite_dangerous": {
-      "name": "Elite Dangerous",
-      "apps": [...]
-    },
-    "star_citizen": {
-      "name": "Star Citizen", 
-      "apps": [...]
-    },
-    "eve_online": {
-      "name": "EVE Online",
-      "apps": [...]
-    }
-  }
-}
-```
-
-### Application Entry Format
-```json
-{
-  "id": "unique_id",
-  "name": "Display Name",
-  "install_type": "github|exe|web|winget|zip",
-  "description": "Tool description",
-  "optional": true,
-  "url": "download_url",
-  "checksum": "sha256_hash"
-}
-```
-
-## 🏗️ Project Structure
-
-```
-Exiles-Installer/
-├── src/
-│   ├── main.py              # Main application
-│   ├── apps.json            # Multi-game application catalog
-│   └── exiles_config.json   # User settings
-├── build/
-│   ├── build_windows.bat    # Windows build script
-│   └── test_installer.py    # Test suite  
-├── docs/
-│   ├── README.md            # This file
-│   ├── USER_GUIDE.md        # User documentation
-│   ├── DEVELOPER_GUIDE.md   # Developer documentation
-│   └── BUILD_GUIDE.md       # Build instructions
-├── build_release.py         # Automated build script
-├── requirements.txt         # Python dependencies
-└── replit.md               # Project documentation
-```
-
 ## 🔐 Security & Safety
 
 - **Checksum Verification**: Optional SHA-256 validation for downloads
@@ -191,18 +107,6 @@ Exiles-Installer/
 - **Sandboxed Execution**: PowerShell scripts limited to post-installation tasks
 - **No Elevation**: Most applications install in user space
 - **Web Tool Safety**: Browser isolation for web-based tools
-
-## 🌐 Deployment Options
-
-### Cloud Showcase (Replit)
-- Interactive demo via VNC in web browser
-- Try before downloading
-- Always up-to-date version
-
-### Local Distribution
-- Single executable file (~20MB)
-- No installation required
-- Portable and self-contained
 
 ## 🆘 Troubleshooting
 
@@ -233,6 +137,6 @@ This project is designed for the Elite Dangerous, Star Citizen, and EVE Online g
 
 ---
 
-**Made with ❤️ by CMDR Exiles & CMDR Watty**
+**Made with ❤️ by The Exiles & CMDR Watty**
 
 *Fly safe, Commanders. See you in the black, Pilots. Good hunting, Capsuleers.*
