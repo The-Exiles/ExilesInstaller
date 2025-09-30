@@ -7,14 +7,15 @@ The Exiles Installer is designed to make setting up your space simulation gaming
 ## 📥 Installation
 
 ### Step 1: Download
-- Download `ExilesInstaller.exe` from the latest release
-- No installation required - it's a portable executable
-- File size: ~20MB (includes everything needed)
+- Recommended: Download the Windows installer: ExilesInstaller-<version>-Setup.exe from Releases
+- Portable option: Download ExilesInstaller-portable-<date>.zip from Releases
+- Releases: https://github.com/The-Exiles/ExilesInstaller/releases/latest
 
 ### Step 2: First Run
-1. Double-click `ExilesInstaller.exe` to launch
-2. Windows may show a security warning - click "More info" then "Run anyway"
-3. The installer will open with a dark space-themed interface
+1. If you downloaded the installer: run the Setup and follow the prompts.
+2. If you downloaded the portable ZIP: extract it, then double-click ExilesInstaller.exe.
+3. Windows may show a security warning (SmartScreen) — click "More info", then "Run anyway".
+4. The app will open with a dark space-themed interface.
 
 ## 🎮 Selecting Your Game
 

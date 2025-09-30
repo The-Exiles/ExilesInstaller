@@ -3,7 +3,7 @@
 A comprehensive desktop application for space simulation gaming communities that automates the installation of third-party tools, utilities, and hardware drivers. Built with Python and Tkinter, featuring a dark spaceship HUD interface with multi-game support for **Elite Dangerous**, **Star Citizen**, and **EVE Online**.
 
 ![Multi-Game Support](https://img.shields.io/badge/Games-Elite%20Dangerous%20|%20Star%20Citizen%20|%20EVE%20Online-blue)
-![Python](https://img.shields.io/badge/Python-3.8+-green)
+![Python](https://img.shields.io/badge/Python-3.11+-green)
 ![Platform](https://img.shields.io/badge/Platform-Windows%2010/11-blue)
 
 ## 🎯 Overview
@@ -89,11 +89,15 @@ The Exiles Installer provides a unified interface for installing essential tools
 ## 🚀 Quick Start
 
 ### Download & Run
-1. Download `ExilesInstaller.exe` from releases
-2. Run the executable (no installation required)
-3. Select your game from the dropdown menu
-4. Choose which tools you want to install
-5. Click "► INSTALL SELECTED" and wait for completion
+1. Go to the Releases page and download one of:
+   - Installer: ExilesInstaller-<version>-Setup.exe (recommended)
+   - Portable: ExilesInstaller-portable-<date>.zip (no installation required)
+   (Releases: https://github.com/The-Exiles/ExilesInstaller/releases/latest)
+2. For the installer: run the Setup and follow the prompts.
+3. For the portable ZIP: extract the ZIP, then run ExilesInstaller.exe from the extracted folder.
+4. Select your game from the dropdown menu
+5. Choose which tools you want to install
+6. Click "► INSTALL SELECTED" and wait for completion
 
 ### First-Time Setup
 1. **Elite Dangerous users**: Select essential tools like EDMC and EDDI

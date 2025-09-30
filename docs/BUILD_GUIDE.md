@@ -2,13 +2,13 @@
 
 ## 🎯 Overview
 
-This guide covers building the Exiles Installer from source code into a distributable Windows executable. The installer uses PyInstaller to create a single-file executable that includes all dependencies and configuration.
+This guide covers building the Exiles Installer from source into a distributable Windows application. We use PyInstaller with the provided ExilesInstaller.spec to produce an onedir build (an app folder containing ExilesInstaller.exe and all dependencies). Optionally, you can package that folder into a Windows installer using Inno Setup (installer/ExilesInstaller.iss).
 
 ## 📋 Prerequisites
 
 ### System Requirements
 - **Operating System**: Windows 10/11 (target platform)
-- **Python**: Version 3.8 or later
+- **Python**: Version 3.11 or later
 - **Memory**: 4GB RAM minimum (for build process)
 - **Disk Space**: 500MB free space for build artifacts
 - **Internet**: Required for downloading PyInstaller and dependencies
@@ -20,35 +20,53 @@ This guide covers building the Exiles Installer from source code into a distribu
 
 ## 🚀 Quick Build (Recommended)
 
-### Using the Automated Build Script
+From the repository root:
 
-The easiest way to build the installer is using the provided build script:
+```powershell
+# 1) (optional) Create/activate venv
+python -m venv .venv
+. .\.venv\Scripts\Activate.ps1
 
-```bash
-# Clone or download the project
-git clone <repository-url>
-cd Exiles-Installer
+# 2) Install dependencies
+pip install -r requirements.txt
 
-# Run the automated build script
-python build_release.py
+# 3) Auto-fix links and run sanity tests
+python .\scripts\link_doctor.py --fix
+pytest -q          # or: pytest -q --runslow
+
+# 4) Build portable onedir app (also zips into artifacts\)
+python .\scripts\build_onedir.py
+
+# 5) Build Windows installer (Inno Setup)
+pwsh .\scripts\make_installer_inno.ps1
 ```
+## ✅ Checksums (optional)
 
-The script will:
-1. ✅ Check system requirements
-2. 📦 Install PyInstaller if needed
-3. 🧹 Clean previous build artifacts
-4. 🔨 Build the executable
-5. 📋 Create release documentation
-6. ✅ Validate the output
+Generate and publish SHA-256 hashes for release assets:
+
+```powershell
+# Write SHA256SUMS.txt for all artifacts
+Get-ChildItem .\artifacts\ExilesInstaller-*.* |
+  ForEach-Object {
+    $h = Get-FileHash $_ -Algorithm SHA256
+    "$($h.Hash)  $($_.Name)"
+  } | Out-File .\artifacts\SHA256SUMS.txt -Encoding ascii
+```
 
 ### Build Output
 ```
 dist/
-├── ExilesInstaller.exe    # Main executable (~20MB)
-└── README.txt            # Release documentation
+└── ExilesInstaller/
+├── ExilesInstaller.exe
+└── _internal/…
+
+artifacts/
+├── ExilesInstaller-portable-<version>.zip
+├── ExilesInstaller-<version>-Setup.exe
+└── SHA256SUMS.txt (if enabled in script)
 ```
 
-## 🔧 Manual Build Process
+## 🔧 Alternative: Build using the PyInstaller spec
 
 ### Step 1: Setup Environment
 
@@ -72,32 +90,21 @@ rmdir /s build dist __pycache__
 
 ### Step 3: Build Executable
 
-```bash
-# Basic build command
-pyinstaller --onefile --windowed --name=ExilesInstaller --add-data=src/apps.json:. src/main.py
-
-# Advanced build with all options
-pyinstaller ^
-    --onefile ^
-    --windowed ^
-    --name=ExilesInstaller ^
-    --add-data=src/apps.json:. ^
-    --hidden-import=tkinter.ttk ^
-    --hidden-import=requests ^
-    --hidden-import=webbrowser ^
-    --clean ^
-    --distpath=dist ^
-    src/main.py
+```powershell
+# Build using the provided PyInstaller spec (onedir output)
+# From the repository root
+python -m pip install -r requirements.txt
+python -m PyInstaller -y ExilesInstaller.spec
 ```
 
 ### Step 4: Verify Build
 
-```bash
+```powershell
 # Check if executable was created
-dir dist\ExilesInstaller.exe
+Get-Item dist\ExilesInstaller\ExilesInstaller.exe
 
 # Test the executable
-dist\ExilesInstaller.exe
+& "dist\ExilesInstaller\ExilesInstaller.exe"
 ```
 
 ## 🔧 Build Configuration
@@ -392,7 +399,7 @@ jobs:
         pip install pyinstaller
         
     - name: Build executable
-      run: python build_release.py
+      run: python -m PyInstaller -y ExilesInstaller.spec
       
     - name: Upload artifact
       uses: actions/upload-artifact@v3
@@ -422,14 +429,14 @@ pip install pyinstaller
 
 REM Step 3: Build executable
 echo [3/5] Building executable...
-python build_release.py
+python -m PyInstaller -y ExilesInstaller.spec
 
 REM Step 4: Test executable
 echo [4/5] Testing executable...
-if exist dist\ExilesInstaller.exe (
+if exist dist\ExilesInstaller\ExilesInstaller.exe (
     echo Build successful!
     echo File size: 
-    for %%I in (dist\ExilesInstaller.exe) do echo %%~zI bytes
+    for %%I in (dist\ExilesInstaller\ExilesInstaller.exe) do echo %%~zI bytes
 ) else (
     echo Build failed!
     pause

@@ -239,10 +239,52 @@ def test_web_tools():
 ```
 
 ## 🏗️ Build System
+### Preferred Local Build (scripts)
 
+PowerShell:
+. .\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python .\scripts\link_doctor.py --fix
+pytest -q           # or: pytest -q --runslow
+python .\scripts\build_onedir.py
+pwsh .\scripts\make_installer_inno.ps1
+
+Artifacts (output):
+- artifacts\ExilesInstaller-portable-<version>.zip
+- artifacts\ExilesInstaller-<version>-Setup.exe
+- artifacts\SHA256SUMS.txt (optional; can be generated in the script)
+
+Tip: You can still build with the spec directly for debugging PyInstaller behavior, but the scripts are the canonical path for release artifacts.
+
+```powershell
+. .\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python .\scripts\link_doctor.py --fix
+pytest -q           # or: pytest -q --runslow
+python .\scripts\build_onedir.py
+pwsh .\scripts\make_installer_inno.ps1
+```
 ### PyInstaller Configuration
+The build scripts wrap these options (reference):
+
+- Mode: onedir (folder with ExilesInstaller.exe)
+- GUI: --windowed
+- Icon: installer\icons\exiles.ico
+- Hidden imports: tkinter, tkinter.ttk, tkinter.messagebox, tkinter.filedialog, requests, webbrowser
+- Tcl/Tk data: --collect-data tcl and --collect-data tk
+
+Equivalent CLI (reference only):
+python -m PyInstaller --noconfirm --onedir --windowed ^
+  --name ExilesInstaller ^
+  --icon installer\icons\exiles.ico ^
+  --clean ^
+  --collect-data tcl --collect-data tk ^
+  --hidden-import tkinter --hidden-import tkinter.ttk ^
+  --hidden-import tkinter.messagebox --hidden-import tkinter.filedialog ^
+  --hidden-import requests --hidden-import webbrowser ^
+  src\main.py
 ```python
-# build_release.py
+# ExilesInstaller.spec (args for reference)
 pyinstaller_args = [
     "--onefile",                    # Single executable
     "--windowed",                   # No console window
