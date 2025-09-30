@@ -1,0 +1,6 @@
+# All files require review from core maintainers
+*       @The-Exiles/core-maintainers
+
+# Installer-related paths
+src/**  @The-Exiles/installer-maintainers
+scripts/** @The-Exiles/installer-maintainers
