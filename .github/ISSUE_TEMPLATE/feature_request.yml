@@ -1,0 +1,51 @@
+name: Feature request
+description: Propose a new feature or improvement for ExilesInstaller
+title: "feat: <short summary>"
+labels: [enhancement]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement! Please provide details to help us evaluate and plan the feature.
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      placeholder: One-line description of the feature
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What is the user problem or pain point this feature addresses?
+      placeholder: When trying to ..., I cannot ...
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe your proposed feature or change. Provide examples, mockups, or pseudo-UI where helpful.
+      placeholder: I propose that ExilesInstaller ...
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What alternative solutions did you consider and why were they not chosen?
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Who benefits? How will this be measured or validated?
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope and constraints
+      options:
+        - label: I understand this is a request and not guaranteed to be implemented
+          required: true
+        - label: I am willing to contribute a PR implementing this feature

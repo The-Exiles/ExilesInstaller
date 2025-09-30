@@ -1,0 +1,88 @@
+name: Bug report
+description: Report a reproducible problem in ExilesInstaller
+title: "bug: <short summary>"
+labels: [bug]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug! Please fill out the sections below to help us reproduce and fix the issue.
+  - type: checkboxes
+    id: duplicate
+    attributes:
+      label: Is there an existing issue for this?
+      description: Please search to see if an issue already exists for the bug you encountered.
+      options:
+        - label: I have searched the existing issues
+          required: true
+  - type: input
+    id: version
+    attributes:
+      label: ExilesInstaller version
+      description: App version (e.g., v2025.09.xx) or commit SHA if running from source.
+      placeholder: v2025.09.30 or 14dec92
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows 11
+        - Windows 10
+        - Other/Unknown
+    validations:
+      required: true
+  - type: input
+    id: os_version
+    attributes:
+      label: OS build/version
+      placeholder: e.g., Windows 11 24H2 build 26100
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Provide a minimal, step-by-step reproduction of the problem.
+      placeholder: |
+        1. Launch ExilesInstaller
+        2. Click "Install" on <app>
+        3. See error ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: What did you expect to happen?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      placeholder: What actually happened? Include any full error messages.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and artifacts
+      description: |
+        Paste relevant logs or attach files (drag & drop), such as link reports from artifacts/link_report.*.md, console output, or screenshots.
+      placeholder: |
+        <paste logs here>
+      render: text
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Any other context about the problem (network constraints, corporate proxy, antivirus, etc.).
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I am willing to help debug and provide more info if needed
+        - label: This bug happens on the latest version
+          required: true
