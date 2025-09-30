@@ -1,11 +1,15 @@
 {
-  "metadata": { 
-    "version": "3.0.0", 
-    "description": "Exiles HUD - Multi-Game Space Simulator Tools Installer", 
-    "author": "CMDR Exiles", 
-    "maintainer": "CMDR Watty", 
+  "metadata": {
+    "version": "3.0.0",
+    "description": "Exiles HUD - Multi-Game Space Simulator Tools Installer",
+    "author": "CMDR Exiles",
+    "maintainer": "CMDR Watty",
     "updated": "2025-09-29",
-    "supported_games": ["elite_dangerous", "star_citizen", "eve_online"]
+    "supported_games": [
+      "elite_dangerous",
+      "star_citizen",
+      "eve_online"
+    ]
   },
   "games": {
     "elite_dangerous": {
@@ -45,14 +49,17 @@
         {
           "type": "github",
           "github_repo": "EDCD/EDMarketConnector",
-          "github_asset": "EDMarketConnector"
+          "github_asset": "EDMarketConnector",
+          "url": "https://github.com/EDCD/EDMarketConnector/releases/download/Release/5.13.1/EDMarketConnector_Installer_5.13.1.exe"
         }
       ],
       "optional": false,
       "description": "Essential tool for uploading market data to EDDN",
       "category": "Core Tools",
       "checksum": "",
-      "games": ["elite_dangerous"]
+      "games": [
+        "elite_dangerous"
+      ]
     },
     {
       "id": "EDDI",
@@ -61,13 +68,16 @@
         {
           "type": "github",
           "github_repo": "EDCD/EDDI",
-          "github_asset": "EDDI"
+          "github_asset": "EDDI",
+          "url": "https://github.com/EDCD/EDDI/releases/download/Release/4.1.6/EDDI-4.1.6.exe"
         }
       ],
       "optional": true,
       "description": "Voice response system providing spoken information about game events",
       "category": "Voice & Audio",
-      "games": ["elite_dangerous"]
+      "games": [
+        "elite_dangerous"
+      ]
     },
     {
       "id": "EDDiscovery",
@@ -76,34 +86,42 @@
         {
           "type": "github",
           "github_repo": "EDDiscovery/EDDiscovery",
-          "github_asset": "EDDiscovery"
+          "github_asset": "EDDiscovery",
+          "url": "https://github.com/EDDiscovery/EDDiscovery/releases/download/Release_19.0.9/EDDiscovery-19.0.9.exe"
         }
       ],
       "optional": true,
       "description": "Comprehensive exploration and travel tracking tool",
       "category": "Core Tools",
       "post_steps": [
-        { 
-          "Name": "Extract", 
-          "Script": "$zip=Join-Path $env:USERPROFILE 'Downloads/ExilesHUD/EDDiscovery.zip'; $dest=Join-Path $env:USERPROFILE 'Downloads/ExilesHUD/EDDiscovery'; Expand-Archive $zip $dest -Force" 
+        {
+          "Name": "Extract",
+          "Script": "$zip=Join-Path $env:USERPROFILE 'Downloads/ExilesHUD/EDDiscovery.zip'; $dest=Join-Path $env:USERPROFILE 'Downloads/ExilesHUD/EDDiscovery'; Expand-Archive $zip $dest -Force"
         }
       ],
-      "games": ["elite_dangerous"]
+      "games": [
+        "elite_dangerous"
+      ]
     },
     {
       "id": "EDEngineer",
       "name": "EDEngineer",
       "install_methods": [
         {
+          "type": "exe",
+          "url": "https://raw.githubusercontent.com/msarilar/EDEngineer/master/EDEngineer/releases/setup.exe"
+        },
+        {
           "type": "github",
-          "github_repo": "msarilar/EDEngineer",
-          "github_asset": "EDEngineer"
+          "github_repo": "msarilar/EDEngineer"
         }
       ],
       "optional": true,
       "description": "Engineering materials and blueprint tracker",
       "category": "Utilities",
-      "games": ["elite_dangerous"]
+      "games": [
+        "elite_dangerous"
+      ]
     },
     {
       "id": "EDHM-UI",
@@ -117,7 +135,9 @@
       "optional": true,
       "description": "Tool for customizing Elite Dangerous HUD colors (download from GitHub)",
       "category": "Utilities",
-      "games": ["elite_dangerous"]
+      "games": [
+        "elite_dangerous"
+      ]
     },
     {
       "id": "EDMC-Overlay",
@@ -126,23 +146,26 @@
         {
           "type": "github",
           "github_repo": "inorton/EDMCOverlay",
-          "github_asset": "EDMCOverlay"
+          "github_asset": "EDMCOverlay",
+          "url": "https://github.com/inorton/EDMCOverlay/releases/download/1.0.6/EDMCOverlay-1.0.6.msi"
         }
       ],
       "optional": true,
       "description": "Overlay plugin for EDMC to display information in-game",
       "category": "Utilities",
       "post_steps": [
-        { 
-          "Name": "Extract", 
-          "Script": "$z=Join-Path $env:USERPROFILE 'Downloads/ExilesHUD/EDMCOverlay.zip'; $d=Join-Path $env:USERPROFILE 'Downloads/ExilesHUD/EDMCOverlay'; Expand-Archive $z $d -Force" 
+        {
+          "Name": "Extract",
+          "Script": "$z=Join-Path $env:USERPROFILE 'Downloads/ExilesHUD/EDMCOverlay.zip'; $d=Join-Path $env:USERPROFILE 'Downloads/ExilesHUD/EDMCOverlay'; Expand-Archive $z $d -Force"
         },
-        { 
-          "Name": "CopyToEDMC", 
-          "Script": "$dest=Join-Path $env:APPDATA 'EDMarketConnector\\plugins'; New-Item -Force -Type Directory $dest | Out-Null; Copy-Item -Recurse -Force (Join-Path $env:USERPROFILE 'Downloads/ExilesHUD/EDMCOverlay\\*') $dest" 
+        {
+          "Name": "CopyToEDMC",
+          "Script": "$dest=Join-Path $env:APPDATA 'EDMarketConnector\\plugins'; New-Item -Force -Type Directory $dest | Out-Null; Copy-Item -Recurse -Force (Join-Path $env:USERPROFILE 'Downloads/ExilesHUD/EDMCOverlay\\*') $dest"
         }
       ],
-      "games": ["elite_dangerous"]
+      "games": [
+        "elite_dangerous"
+      ]
     },
     {
       "id": "VoiceAttack",
@@ -153,15 +176,19 @@
           "winget_id": "VoiceAttack.VoiceAttack"
         },
         {
-          "type": "exe",
-          "url": "https://voiceattack.com/file/VoiceAttackInstall.exe",
-          "filename": "VoiceAttackInstall.exe"
+          "type": "web",
+          "url": "https://voiceattack.com/",
+          "manual": true
         }
       ],
       "optional": true,
       "description": "Voice command software for hands-free operation",
       "category": "Voice & Audio",
-      "games": ["elite_dangerous", "star_citizen", "eve_online"]
+      "games": [
+        "elite_dangerous",
+        "star_citizen",
+        "eve_online"
+      ]
     },
     {
       "id": "JoystickGremlin",
@@ -174,13 +201,17 @@
         {
           "type": "github",
           "github_repo": "WhiteMagic/JoystickGremlin",
-          "github_asset": "JoystickGremlin"
+          "url": "https://github.com/WhiteMagic/JoystickGremlin/releases/download/Release_13.3/Joystick.Gremlin.R13.3.msi"
         }
       ],
       "optional": true,
       "description": "Advanced joystick configuration and macro tool",
       "category": "Hardware & Input",
-      "games": ["elite_dangerous", "star_citizen", "eve_online"]
+      "games": [
+        "elite_dangerous",
+        "star_citizen",
+        "eve_online"
+      ]
     },
     {
       "id": "HidHide",
@@ -188,19 +219,24 @@
       "install_methods": [
         {
           "type": "winget",
-          "winget_id": "ViGEm.HidHide"
+          "winget_id": "Nefarius.HidHide"
         },
         {
           "type": "github",
           "github_repo": "nefarius/HidHide",
-          "github_asset": "HidHide"
+          "github_asset": "HidHide",
+          "url": "https://github.com/nefarius/HidHide/releases/download/v1.5.230.0/HidHide_1.5.230_x64.exe"
         }
       ],
       "optional": true,
       "requires_admin": true,
       "description": "Tool for hiding input devices from games",
       "category": "Hardware & Input",
-      "games": ["elite_dangerous", "star_citizen", "eve_online"]
+      "games": [
+        "elite_dangerous",
+        "star_citizen",
+        "eve_online"
+      ]
     },
     {
       "id": "vJoy",
@@ -208,7 +244,7 @@
       "install_methods": [
         {
           "type": "exe",
-          "url": "https://downloads.sourceforge.net/project/vjoystick/Beta%202.x/2.1.8.39-270518/vJoySetup.exe",
+          "url": "https://netactuate.dl.sourceforge.net/project/vjoystick/Beta%202.x/2.1.8.39-270518/vJoySetup.exe?viasf=1",
           "filename": "vJoySetup.exe"
         }
       ],
@@ -216,7 +252,11 @@
       "requires_admin": true,
       "description": "Virtual joystick driver for advanced HOTAS setups",
       "category": "Hardware & Input",
-      "games": ["elite_dangerous", "star_citizen", "eve_online"]
+      "games": [
+        "elite_dangerous",
+        "star_citizen",
+        "eve_online"
+      ]
     },
     {
       "id": "opentrack",
@@ -225,13 +265,17 @@
         {
           "type": "github",
           "github_repo": "opentrack/opentrack",
-          "github_asset": "opentrack"
+          "github_asset": "opentrack",
+          "url": "https://github.com/opentrack/opentrack/releases/download/opentrack-2023.3.0/opentrack-2023.3.0-win32-setup.exe"
         }
       ],
       "optional": true,
       "description": "Free head tracking software for enhanced immersion",
       "category": "Head Tracking",
-      "games": ["elite_dangerous", "star_citizen"]
+      "games": [
+        "elite_dangerous",
+        "star_citizen"
+      ]
     },
     {
       "id": "TrackIR",
@@ -242,7 +286,10 @@
       "optional": true,
       "description": "Official TrackIR head tracking software",
       "category": "Head Tracking",
-      "games": ["elite_dangerous", "star_citizen"]
+      "games": [
+        "elite_dangerous",
+        "star_citizen"
+      ]
     },
     {
       "id": "TobiiGameHub",
@@ -252,7 +299,10 @@
       "optional": true,
       "description": "Tobii eye tracking software for gaming (download from official site)",
       "category": "Head Tracking",
-      "games": ["elite_dangerous", "star_citizen"]
+      "games": [
+        "elite_dangerous",
+        "star_citizen"
+      ]
     },
     {
       "id": "VIRPIL-VPC",
@@ -262,19 +312,27 @@
       "optional": true,
       "description": "Configuration software for VIRPIL HOTAS controllers (download from support page)",
       "category": "Hardware & Input",
-      "games": ["elite_dangerous", "star_citizen", "eve_online"]
+      "games": [
+        "elite_dangerous",
+        "star_citizen",
+        "eve_online"
+      ]
     },
     {
       "id": "VKBDevCfg",
       "name": "VKB Device Configuration Tool",
       "install_type": "zip",
-      "url": "https://vkbcontrollers.com/software/VKBDevCfg.zip",
-      "filename": "VKBDevCfg.zip",
+      "url": "https://cdn.shopify.com/s/files/1/0551/4739/7238/files/VKBDevCfg-C_v0.93.43.zip?v=1751379763",
+      "filename": "VKBDevCfg-C_v0.93.43.zip",
       "optional": true,
       "extract_to": "VKBDevCfg",
       "description": "Configuration software for VKB HOTAS controllers",
       "category": "Hardware & Input",
-      "games": ["elite_dangerous", "star_citizen", "eve_online"]
+      "games": [
+        "elite_dangerous",
+        "star_citizen",
+        "eve_online"
+      ]
     },
     {
       "id": "TARGET",
@@ -284,7 +342,11 @@
       "optional": true,
       "description": "Advanced scripting software for Thrustmaster HOTAS (download from device support page)",
       "category": "Hardware & Input",
-      "games": ["elite_dangerous", "star_citizen", "eve_online"]
+      "games": [
+        "elite_dangerous",
+        "star_citizen",
+        "eve_online"
+      ]
     },
     {
       "id": "Logitech-GHUB",
@@ -294,7 +356,11 @@
       "optional": true,
       "description": "Configuration software for Logitech gaming peripherals",
       "category": "Hardware & Input",
-      "games": ["elite_dangerous", "star_citizen", "eve_online"]
+      "games": [
+        "elite_dangerous",
+        "star_citizen",
+        "eve_online"
+      ]
     },
     {
       "id": "AutoHotkey",
@@ -302,19 +368,24 @@
       "install_methods": [
         {
           "type": "winget",
-          "winget_id": "Lexikos.AutoHotkey"
+          "winget_id": "AutoHotkey.AutoHotkey"
         },
         {
           "type": "github",
           "github_repo": "AutoHotkey/AutoHotkey",
-          "github_asset": "AutoHotkey"
+          "github_asset": "AutoHotkey",
+          "url": "https://github.com/AutoHotkey/AutoHotkey/releases/download/v2.0.19/AutoHotkey_2.0.19_setup.exe"
         }
       ],
       "optional": true,
       "requires_admin": true,
       "description": "Automation scripting language for Windows",
       "category": "Utilities",
-      "games": ["elite_dangerous", "star_citizen", "eve_online"]
+      "games": [
+        "elite_dangerous",
+        "star_citizen",
+        "eve_online"
+      ]
     },
     {
       "id": "7zip",
@@ -325,7 +396,11 @@
       "description": "File archiver with high compression ratio",
       "category": "Utilities",
       "checksum": "",
-      "games": ["elite_dangerous", "star_citizen", "eve_online"]
+      "games": [
+        "elite_dangerous",
+        "star_citizen",
+        "eve_online"
+      ]
     },
     {
       "id": "SC-Trade-Tools",
@@ -335,17 +410,21 @@
       "optional": false,
       "description": "Primary trade route optimization platform",
       "category": "Trading",
-      "games": ["star_citizen"]
+      "games": [
+        "star_citizen"
+      ]
     },
     {
       "id": "Erkul-Games",
       "name": "Erkul DPS Calculator",
       "install_type": "web",
-      "url": "https://erkul.games/",
+      "url": "https://www.erkul.games/",
       "optional": false,
       "description": "Ship loadout builder and DPS calculator",
       "category": "Ship Building",
-      "games": ["star_citizen"]
+      "games": [
+        "star_citizen"
+      ]
     },
     {
       "id": "UEX-Corp",
@@ -355,7 +434,9 @@
       "optional": true,
       "description": "Comprehensive trading, mining, and marketplace data",
       "category": "Trading",
-      "games": ["star_citizen"]
+      "games": [
+        "star_citizen"
+      ]
     },
     {
       "id": "CCU-Game",
@@ -365,7 +446,9 @@
       "optional": true,
       "description": "Ship upgrade chain optimization and fleet planning",
       "category": "Fleet Management",
-      "games": ["star_citizen"]
+      "games": [
+        "star_citizen"
+      ]
     },
     {
       "id": "GameGlass",
@@ -375,18 +458,23 @@
       "optional": true,
       "description": "Touchscreen controls for Star Citizen",
       "category": "Control Systems",
-      "games": ["star_citizen"]
+      "games": [
+        "star_citizen"
+      ]
     },
     {
       "id": "PYFA",
       "name": "PYFA (Python Fitting Assistant)",
       "install_type": "github",
       "github_repo": "pyfa-org/Pyfa",
-      "github_asset": "pyfa-v2.61.0-win.exe",
+      "github_asset": "win.exe",
       "optional": false,
       "description": "Cross-platform ship fitting tool",
       "category": "Ship Fitting",
-      "games": ["eve_online"]
+      "games": [
+        "eve_online"
+      ],
+      "url": "https://github.com/pyfa-org/Pyfa/releases/download/v2.64.1/pyfa-v2.64.1-win.exe"
     },
     {
       "id": "EVE-Guru",
@@ -396,7 +484,9 @@
       "optional": true,
       "description": "Manufacturing planner with profitability optimization",
       "category": "Industry",
-      "games": ["eve_online"]
+      "games": [
+        "eve_online"
+      ]
     },
     {
       "id": "Ravworks",
@@ -406,27 +496,33 @@
       "optional": true,
       "description": "Free market and industry tool",
       "category": "Industry",
-      "games": ["eve_online"]
+      "games": [
+        "eve_online"
+      ]
     },
     {
-      "id": "Pathfinder",
+      "id": "Exiles Pathfinder",
       "name": "Pathfinder Mapping Tool",
       "install_type": "web",
-      "url": "https://pathfinder.ashharrison.co.uk/",
+      "url": "https://eve-auth.theexiles.gg/account/login/?next=/dashboard/",
       "optional": true,
       "description": "Wormhole mapping and fleet management",
       "category": "Fleet Management",
-      "games": ["eve_online"]
+      "games": [
+        "eve_online"
+      ]
     },
     {
       "id": "EVE-Workbench",
       "name": "EVE Workbench",
       "install_type": "web",
-      "url": "https://eve-workbench.github.io/",
+      "url": "https://eveworkbench.com/",
       "optional": true,
       "description": "Web-based fitting and market tools",
       "category": "Ship Fitting",
-      "games": ["eve_online"]
+      "games": [
+        "eve_online"
+      ]
     }
   ]
 }
