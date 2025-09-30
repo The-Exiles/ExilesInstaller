@@ -1,0 +1,75 @@
+# ExilesInstaller repository .gitignore
+# Generated on 2025-09-30
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Unit test / coverage
+.pytest_cache/
+.coverage*
+htmlcov/
+.tox/
+.nox/
+.mypy_cache/
+.pytype/
+.ruff_cache/
+
+# Packaging
+*.egg-info/
+.eggs/
+
+# Virtual environments and local env files
+.venv/
+venv/
+env/
+ENV/
+# generic env files (keep tracked ones if explicitly added)
+*.env
+*.env.*
+# project-specific
+scripts/.env
+
+# --- Build and distribution artifacts ---
+build/
+dist/
+artifacts/
+# PyInstaller work directories (sometimes named build or similar)
+*.spec.lock
+
+# Wheels and archives
+*.whl
+*.tar
+*.tar.gz
+*.zip
+
+# --- Installer/packaging outputs ---
+installer/Output/
+# Inno Setup temporary files
+*.iss.cache
+*.iss.tmp
+
+# --- Editors/IDEs ---
+# JetBrains IDEs
+.idea/
+*.iml
+
+# --- OS files ---
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# --- Logs ---
+*.log
+logs/
+
+# --- Misc ---
+# If you use pip-tools or pipenv, you might generate lock files
+Pipfile.lock
+poetry.lock
+
+# Note:
+# - We intentionally do NOT ignore PyInstaller .spec files (e.g., ExilesInstaller.spec)
+#   and Inno Setup scripts (installer/*.iss) because they are part of the build config.
+
